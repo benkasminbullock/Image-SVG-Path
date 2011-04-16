@@ -1,0 +1,7 @@
+# Don't include distribution files
+
+*.tar.gz
+
+# Don't include "Makefile" which is generated from "Makefile.PL"
+
+Makefile
