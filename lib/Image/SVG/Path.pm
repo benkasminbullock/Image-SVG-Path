@@ -3,8 +3,8 @@ use warnings;
 use strict;
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw/extract_path_info reverse/;
-our $VERSION = 0.05;
+our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
+our $VERSION = 0.06;
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is
@@ -31,10 +31,10 @@ sub add_coords
     $first_ref->[1] += $to_add_ref->[1];
 }
 
-sub reverse
+sub reverse_path
 {
     my ($path) = @_;
-    my $me = 'reverse';
+    my $me = 'reverse_path';
     if (! $path) {
         croak "$me: no input";
     }
@@ -50,7 +50,7 @@ sub reverse
     for my $value (@values[1..$#values]) {
         my $element = {};
         $element->{type} = $value->{type};
-        print "$element->{type}\n";
+#        print "$element->{type}\n";
         if ($value->{type} eq 'cubic-bezier') {
             $element->{control1} = $value->{control2};
             $element->{control2} = $value->{control1};
@@ -77,7 +77,7 @@ sub create_path_string
     my $path = '';
     for my $element (@$info_ref) {
         my $t = $element->{type};
-        print "$t\n";
+#        print "$t\n";
         if ($t eq 'moveto') {
             my @p = @{$element->{point}};
             $path .= sprintf ("M%f,%f ", @p);

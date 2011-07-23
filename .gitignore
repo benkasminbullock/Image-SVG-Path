@@ -2,7 +2,16 @@
 
 *.tar.gz
 
+# Don't include dist test stuff
+
+Image-SVG-Path-*
+
 # Don't include "Makefile" which is generated from "Makefile.PL"
 
 Makefile
+
+# Don't include dists
+
+dists
+
 
