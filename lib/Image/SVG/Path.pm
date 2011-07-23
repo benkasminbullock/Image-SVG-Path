@@ -459,9 +459,9 @@ informative messages about what it is doing as it parses the path.
 
 =back
 
-=head2 reverse
+=head2 reverse_path
 
-    my $reverse_path = reverse ($path);
+    my $reverse_path = reverse_path ($path);
 
 Make an SVG path which is the exact reverse of the input.
 
