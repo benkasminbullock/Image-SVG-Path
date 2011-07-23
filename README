@@ -1,0 +1,23 @@
+The files in and under this directory comprise Image::SVG::Path. This
+is a Perl module which extracts information from the "d" attribute of
+an SVG (scalable vector graphics) <path> element.
+
+To install the module, in this directory,
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+To read the documentation, after installation,
+
+   perldoc Image::SVG::Path
+
+or before installation,
+
+   perldoc lib/Image/SVG/Path.pm
+
+If problems are encountered, contact the module's maintainer at
+<bkb@cpan.org>.
+
+Ben Bullock, 6 June 2011

@@ -1,10 +1,10 @@
 package Image::SVG::Path;
-require Exporter;
-@ISA = qw(Exporter);
-@EXPORT_OK = qw/extract_path_info/;
 use warnings;
 use strict;
-our $VERSION = 0.03;
+require Exporter;
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw/extract_path_info reverse/;
+our $VERSION = 0.05;
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is
@@ -29,6 +29,70 @@ sub add_coords
     my ($first_ref, $to_add_ref) = @_;
     $first_ref->[0] += $to_add_ref->[0];
     $first_ref->[1] += $to_add_ref->[1];
+}
+
+sub reverse
+{
+    my ($path) = @_;
+    my $me = 'reverse';
+    if (! $path) {
+        croak "$me: no input";
+    }
+    my @values = extract_path_info ($path, {
+        no_shortcuts => 1,
+        absolute => 1,
+    });
+    if (! @values) {
+        return '';
+    }
+    my @rvalues;
+    my $end_point = $values[0]->{point};
+    for my $value (@values[1..$#values]) {
+        my $element = {};
+        $element->{type} = $value->{type};
+        print "$element->{type}\n";
+        if ($value->{type} eq 'cubic-bezier') {
+            $element->{control1} = $value->{control2};
+            $element->{control2} = $value->{control1};
+            $element->{end} = $end_point;
+            $end_point = $value->{end};
+        }
+        else {
+            croak "Can't handle path element type '$value->{type}'";
+        }
+        unshift @rvalues, $element;
+    }
+    my $moveto = {
+        type => 'moveto',
+        point => $end_point,
+    };
+    unshift @rvalues, $moveto;
+    my $rpath = create_path_string (\@rvalues);
+    return $rpath;
+}
+
+sub create_path_string
+{
+    my ($info_ref) = @_;
+    my $path = '';
+    for my $element (@$info_ref) {
+        my $t = $element->{type};
+        print "$t\n";
+        if ($t eq 'moveto') {
+            my @p = @{$element->{point}};
+            $path .= sprintf ("M%f,%f ", @p);
+        }
+        elsif ($t eq 'cubic-bezier') {
+            my @c1 = @{$element->{control1}};
+            my @c2 = @{$element->{control2}};
+            my @e = @{$element->{end}};
+            $path .= sprintf ("C%f,%f %f,%f %f,%f ", @c1, @c2, @e);
+        }
+        else {
+            croak "Don't know how to deal with type '$t'";
+        }
+    }
+    return $path;
 }
 
 # The following regular expression splits the path into pieces
@@ -137,6 +201,23 @@ sub extract_path_info
                 };
             }
         }
+        elsif (uc $curve_type eq 'L') {
+            my $expect_numbers = 2;
+            if (@numbers % $expect_numbers != 0) {
+                croak "Wrong number of values for an L command " .
+                    scalar @numbers . " in '$path'";
+            }
+            my $position = position_type ($curve_type);
+            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
+                my $offset = $expect_numbers * $i;
+                push @path_info, {
+                    type => 'line-to',
+                    position => $position,
+                    end => [@numbers[$offset, $offset + 1]],
+                    svg_key => $curve_type,
+                }
+            }
+        }
         else {
             croak "I don't know what to do with a curve type '$curve_type'";
         }
@@ -159,7 +240,7 @@ sub extract_path_info
                     if ($ip) {
                         if (ref $ip ne 'ARRAY' ||
                             scalar @$ip != 2) {
-                            croak "The initial position you supplied doesn't look like a pair of coordinates";
+                            croak "The initial position supplied doesn't look like a pair of coordinates";
                         }
                         add_coords ($element->{point}, $ip);
                     }
@@ -211,15 +292,46 @@ __END__
 
 Image::SVG::Path - read the "d" attribute of an SVG path
 
-    use Image::SVG::Path qw/extract_path_info/;
+=head1 SYNOPSIS
+
+    use Image::SVG::Path 'extract_path_info';
     my @path_info = extract_path_info ($path_d_attribute);
 
-This module is for extracting the information contained in the "d"
-attribute of an SVG <path> element and turning it into a simpler
-series of steps. SVG means "scalable vector graphics" and it is a
-standard of the W3 consortium. See L<http://www.w3.org/TR/SVG/> for
-the full specification. See L<http://www.w3.org/TR/SVG/paths.html> for
-the specification for paths.
+=head1 DESCRIPTION
+
+This module extracts information contained in the "d" attribute of an
+SVG <path> element and turns it into a simpler series of steps. 
+
+For example, an SVG <path> element might take the form
+
+<path d="M9.6,20.25c0.61,0.37,3.91,0.45,4.52,0.34c2.86-0.5,14.5-2.09,21.37-2.64c0.94-0.07,2.67-0.26,3.45,0.04"/>
+
+Using an XML parser, such as L<XML::Parser>,
+
+    use XML::Parser;
+    use Image::SVG::Path 'extract_path_info';
+    my $p = XML::Parser->new (Handlers => {Start => \& start});
+    $p->parsefile ($file)
+        or die "Error $file: ";
+
+    sub start
+    {
+        my ($expat, $element, %attr) = @_;
+
+        if ($element eq 'path') {
+            my $d = $attr{d};
+            my @r = extract_path_info ($d);
+            # Do something with path info in @r
+        }
+    }
+
+SVG means "scalable vector graphics" and it is a standard of the W3
+consortium. See L<http://www.w3.org/TR/SVG/> for the full
+specification. See L<http://www.w3.org/TR/SVG/paths.html> for the
+specification for paths. Although SVG is a type of XML, the text in
+the d attribute of SVG paths is not in the XML format but in a more
+condensed form using single letters and numbers. This module is a
+parser for that condensed format.
 
 =head1 FUNCTIONS
 
@@ -285,93 +397,124 @@ This prints out
        type -> cubic-bezier            
        end -> [6.93, 103.36]
 
-The return value is an array containing a sequence of hash
-references. Each of the hash references has the three fields "type",
-"position", and "svg_key". The C<type> field says what type of thing
-it is. The C<position> value is either "relative" or "absolute". The
-C<svg_key> field is the original key from the path.
+The return value is a list of hash references. Each hash reference has
+at least three keys, C<type>, C<position>, and C<svg_key>. The C<type>
+field says what type of thing it is, for example a cubic bezier curve
+or a line. The C<position> value is either "relative" or "absolute"
+depending on whether the coordinates of this step of the path are
+relative to the current point (relative) or to the drawing's origin
+(absolute). The C<svg_key> field is the original key from the
+path. C<position> is relative if this key is lower case and absolute
+if this key is upper case.
 
-If the type is "moveto", the hash contains one more field, "point",
-which is the point to move to as an array reference containing the x
-and y coordinates.
+If C<type> is C<moveto>, the hash reference contains one more field,
+C<point>, which is the point to move to. This is an array reference
+containing the I<x> and I<y> coordinates as elements indexed 0 and 1
+respectively.
 
-If the type is "cubic-bezier", the hash contains three more fields,
-C<control1>, C<control2> and C<end>, each array references containing
-the x and y coordinates of the first and second control points and the
-end point of the Bezier curve respectively. (The start point of the
-curve is the end point of the previous part of the path.)
+If the type is C<cubic-bezier>, the hash reference contains three more
+fields, C<control1>, C<control2> and C<end>. The value of each is an
+array reference containing the I<x> and I<y> coordinates of the first
+and second control points and the end point of the Bezier curve
+respectively. (The start point of the curve is the end point of the
+previous part of the path.)
 
-If the type is "shortcut-cubic-bezier", the hash contains two more
+If the type is C<shortcut-cubic-bezier>, the hash contains two more
 fields, C<control2> and C<end>. C<control2> is the second control
 point, and C<end> is the end point. The first control point is got by
 reflecting the second control point of the previous curve around the
 end point of the previous curve (the start point of the current
-curve). If you find that confusing then you might want to switch on
-the L</no_shortcuts> option which will automatically replace shortcut
-cubic bezier curves with the normal kind, by calculating the first
-control point for you.
+curve). 
 
-There is a second argument of a hash reference which you can use to
-make a request.
+There is also an option L</no_shortcuts> which automatically replaces
+shortcut cubic bezier curves with the normal kind, by calculating the
+first control point.
+
+A second argument to C<extract_path_info> contains options for the
+extraction in the form of a hash reference. For example,
 
     my @path_info = extract_path_info ($path, {absolute => 1});
 
-You can set a combination of the following values:
+The following may be chosen by adding them to the hash reference:
 
 =over
 
 =item absolute
 
-If this is set to a true value, it changes relative to absolute
-positions. For example a curve marked with "c" is changed to the
-equivalent "C" curve. 
-
-=item initial_position
-
-The initial position of the path for the case that the path begins
-with a relative moveto rather than an absolute one.
+If the hash element C<absolute> is set to a true value, relative
+positions are changed to absolute. For example a "c" curve is changed
+to the equivalent "C" curve.
 
 =item no_shortcuts
 
-If this is set to a true value then shortcuts ("S" curves) are changed
-into the equivalent "C" curves. A deficiency of this is that it only
-works in combination with the "absolute" option, otherwise it does
-nothing.
+If the hash element C<no_shortcuts> is set to a true value then
+shortcuts ("S" curves) are changed into the equivalent "C" curves. A
+deficiency of this is that it only works in combination with the
+"absolute" option, otherwise it does nothing.
 
 =item verbose
 
-If this is set to a true value, it prints out messages about what it
-is doing as it parses the path.
+If this is set to a true value, C<extract_path_info> prints out
+informative messages about what it is doing as it parses the path.
 
 =back
+
+=head2 reverse
+
+    my $reverse_path = reverse ($path);
+
+Make an SVG path which is the exact reverse of the input.
+
+=head3 BUGS
+
+This only works for cubic bezier curves with absolute position and no
+shortcuts (C elements only). It doesn't fill in all the information
+correctly.
+
+=head2 create_path_string
+
+    my $path = create_path_string (\@info);
+
+Given a set of information as created by L</extract_path_info>, turn
+them into an SVG string representing a path.
+
+=head3 BUGS
+
+This only works for cubic bezier curves and the initial moveto element
+for absolute position and no shortcuts (C elements only).
+
+=head1 DIAGNOSTICS
+
+
 
 =head1 BUGS
 
 =over
 
-=item Only cubic bezier curves
+=item Only cubic bezier curves and lines
 
-Right now the module only deals with cubic bezier curves. It doesn't
-deal with quadratic bezier curves, elliptical arcs, or lines. That is
-because I haven't come across any of these in the SVG files I have
-looked at.
+This module only parses movetos (I<m> elements), cubic bezier curves
+(I<s> and I<c> elements) and lines (I<l> elements). It does not parse
+quadratic bezier curves (I<q> and I<t> elements), elliptical arcs
+(I<a> elements), or horizontal and vertical linetos (I<h> and I<v>
+elements).
 
-=item Doesn't use the grammar
+=item Does not use the grammar
 
 There is a grammar for the paths in the W3 specification. See
 L<http://www.w3.org/TR/SVG/paths.html#PathDataBNF>. However, this
-module doesn't use that grammar, it just hacks up the path using
+module does not use that grammar. Instead it hacks up the path using
 regexes.
 
 =back
 
 =head1 EXPORTS
 
-The module exports L</extract_path_info> on demand, so you need to say
+The module exports L</extract_path_info> on demand, so 
 
      use Image::SVG::Path 'extract_path_info';
 
-to import it into your namespace.
+imports it.
 
 =head1 AUTHOR
 
@@ -379,8 +522,8 @@ Ben Bullock, <bkb@cpan.org>
 
 =head1 LICENCE
 
-You can use, modify and distribute this Perl module and all the
-associated files under either the Perl artistic licence or the GNU
-General Public Licence.
+This module and all associated files can be used, modified and
+distributed under either the Perl artistic licence or the GNU General
+Public Licence.
 
 =cut
