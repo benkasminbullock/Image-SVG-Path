@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = 0.06;
+our $VERSION = 0.07;
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is

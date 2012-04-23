@@ -5,6 +5,7 @@ use ExtUtils::MakeMaker;
 # $pm points to the main file of this package.
 
 my $pm = 'lib/Image/SVG/Path.pm';
+my $repo = 'https://github.com/benkasminbullock/Image-SVG-Path';
 
 WriteMakefile (
     NAME => 'Image::SVG::Path',
@@ -12,4 +13,10 @@ WriteMakefile (
     ABSTRACT_FROM => $pm,
     AUTHOR => 'Ben Bullock <bkb@cpan.org>',
     LICENSE => 'perl',
+    META_MERGE => {
+        resources => {
+            repository => $repo,
+            bugtracker => "$repo/issues",
+        },
+    },
 );
