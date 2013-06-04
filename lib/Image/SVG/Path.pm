@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = 0.07;
+our $VERSION = 0.08;
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is
@@ -88,7 +88,10 @@ sub create_path_string
             my @e = @{$element->{end}};
             $path .= sprintf ("C%f,%f %f,%f %f,%f ", @c1, @c2, @e);
         }
-        else {
+        elsif ($t eq 'closepath') {
+            $path .= "Z";
+        }
+	else {
             croak "Don't know how to deal with type '$t'";
         }
     }
@@ -144,7 +147,7 @@ sub extract_path_info
     };
     # Deal with the rest of the path.
     my @curves;
-    while ($curves =~ /([cslqtahv])\s*([-0-9.,\s]+)/gi) {
+    while ($curves =~ /([cslqtahvz])\s*([-0-9.,\s]*)/gi) {
         push @curves, [$1, $2];
     }
     if (@curves == 0) {
@@ -216,6 +219,18 @@ sub extract_path_info
                     end => [@numbers[$offset, $offset + 1]],
                     svg_key => $curve_type,
                 }
+            }
+        }
+        elsif (uc $curve_type eq 'Z') {
+            if (@numbers > 0) {
+                croak "Wrong number of values for a Z command " .
+                    scalar @numbers . " in '$path'";
+            }
+            my $position = position_type ($curve_type);
+	    push @path_info, {
+		type => 'closepath',
+		position => $position,
+		svg_key => $curve_type,
             }
         }
         else {
@@ -396,6 +411,10 @@ This prints out
        position -> absolute            
        type -> cubic-bezier            
        end -> [6.93, 103.36]
+    Element 7:
+       svg_key -> z
+       position -> relative
+       type -> closepath
 
 The return value is a list of hash references. Each hash reference has
 at least three keys, C<type>, C<position>, and C<svg_key>. The C<type>
