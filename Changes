@@ -1,3 +1,7 @@
+Version 0.08
+
+* Adds the "z" element.
+
 Version 0.06
 
 * "reverse" is now "reverse_path".
