@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = 0.08;
+our $VERSION = '0.09';
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is
@@ -534,6 +534,12 @@ The module exports L</extract_path_info> on demand, so
      use Image::SVG::Path 'extract_path_info';
 
 imports it.
+
+=head1 SEE ALSO
+
+L<MarpaX::Languages::SVG::Parser>
+
+This parser uses the SVG grammar mentioned in L</BUGS>.
 
 =head1 AUTHOR
 
