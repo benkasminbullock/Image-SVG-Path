@@ -5,4 +5,8 @@
 ^MYMETA\.(json|yml)$
 ^Makefile$
 ^build\.pl$
+# Old dists, for some reason (??)
 dists
+# Author tests, find on github.
+xt/.*
+
