@@ -25,6 +25,11 @@ is ($path2_info[1]->{position}, 'relative');
 is ($path2_info[1]->{end}->[0], 4);
 is ($path2_info[1]->{end}->[1], 5);
 
+my @path2_info_abs = extract_path_info ($path2, {absolute => 1});
+
+is ($path2_info_abs[1]->{end}->[0], 6);
+is ($path2_info_abs[1]->{end}->[1], 8);
+
 done_testing ();
 exit;
 
