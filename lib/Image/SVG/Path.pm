@@ -262,6 +262,12 @@ sub extract_path_info
                 }
                 $abs_pos = $element->{point};
             }
+            elsif ($element->{type} eq 'line-to') {
+                if ($element->{position} eq 'relative') {
+                    add_coords ($element->{end},      $abs_pos);
+                }
+                $abs_pos = $element->{end};
+            }
             elsif ($element->{type} eq 'cubic-bezier') {
                 if ($element->{position} eq 'relative') {
                     add_coords ($element->{control1}, $abs_pos);
