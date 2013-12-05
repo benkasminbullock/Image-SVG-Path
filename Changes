@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.10 2013-12-05
+
+* Fix bug with "l" format.
+
 0.09 2013-11-27
 
 * Added "See also" section on Marpa-based module.
