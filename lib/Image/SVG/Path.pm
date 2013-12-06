@@ -100,7 +100,22 @@ sub create_path_string
 
 # The following regular expression splits the path into pieces
 # Note we only split on '-' when it's not preceeded by 'e'
-my $split_re = qr/(?:,|(?<!e)(?=-)|\s+)/;
+
+my $split_re = qr/
+		     (?:
+			 ,
+		     |
+			 (?<!e)(?=-)
+		     |
+			 \s+
+		     )
+		 /x;
+
+# Match a number
+
+my $number_re = qr/[-0-9.,e]+/i;
+
+my $numbers_re = qr/(?:$number_re|\s)*/;
 
 sub extract_path_info
 {
@@ -128,7 +143,7 @@ sub extract_path_info
         print "$me: I am trying to split up '$path'.\n";
     }
     my @path_info;
-    my $has_moveto = ($path =~ /^([Mm])\s*,?\s*([-0-9.,]+)(.*)$/);
+    my $has_moveto = ($path =~ /^([Mm])\s*($numbers_re)(.*)$/);
     if (! $has_moveto) {
         croak "No moveto at start of path '$path'";
     }
@@ -138,20 +153,37 @@ sub extract_path_info
     }
     # Deal with the initial "move to" command.
     my $position = position_type ($moveto_type);
-    my ($x, $y) = split $split_re, $move_to, 2;
+    my @coords = split $split_re, $move_to;
     push @path_info, {
         type => 'moveto',
         position => $position,
-        point => [$x, $y],
+        point => [@coords[0, 1]],
         svg_key => $moveto_type,
     };
+    # Deal with any implicit lineto's remaining.
+    if (@coords > 2) {
+	if ($verbose) {
+	    print "$me: dealing with extra stuff in ", join (', ', @coords),
+	    ".\n";
+	}
+	my $n_coords = scalar (@coords);
+	if ($n_coords % 2 != 0) {
+	    croak "Odd number of coordinates";
+	}
+	for my $i (1..($n_coords / 2 - 1)) {
+	    my ($x, $y) = ($coords[2*$i], $coords[2*$i + 1]);
+	    push @path_info, {
+		type => 'line-to',
+		position => $position,
+		point => [$x, $y],
+		svg_key => ($position eq 'absolute' ? 'L' : 'l'),
+	    };
+	}
+    }
     # Deal with the rest of the path.
     my @curves;
-    while ($curves =~ /([cslqtahvz])\s*([-0-9.,e\s]*)/gi) {
+    while ($curves =~ /([cslqtahvz])\s*($numbers_re)/gi) {
         push @curves, [$1, $2];
-    }
-    if (@curves == 0) {
-        croak "No curves found in '$curves'";
     }
     for my $curve_data (@curves) {
         my ($curve_type, $curve) = @$curve_data;
