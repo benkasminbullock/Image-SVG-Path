@@ -99,8 +99,8 @@ sub create_path_string
 }
 
 # The following regular expression splits the path into pieces
-
-my $split_re = qr/(?:,|(?=-)|\s+)/;
+# Note we only split on '-' when it's not preceeded by 'e'
+my $split_re = qr/(?:,|(?<!e)(?=-)|\s+)/;
 
 sub extract_path_info
 {
@@ -147,7 +147,7 @@ sub extract_path_info
     };
     # Deal with the rest of the path.
     my @curves;
-    while ($curves =~ /([cslqtahvz])\s*([-0-9.,\s]*)/gi) {
+    while ($curves =~ /([cslqtahvz])\s*([-0-9.,e\s]*)/gi) {
         push @curves, [$1, $2];
     }
     if (@curves == 0) {
@@ -311,7 +311,7 @@ __END__
 
 =head1 NAME
 
-Image::SVG::Path - read the "d" attribute of an SVG path
+Image::SVG::Path - reasd the "d" attribute of an SVG path
 
 =head1 SYNOPSIS
 
