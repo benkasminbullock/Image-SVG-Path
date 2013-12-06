@@ -37,6 +37,17 @@ eval {
 };
 ok (! $@, "parse exponential");
 
+TODO: {
+    local $TODO = 'implicit moveto/lineto combis';
+    my $implicit = 'M 0,0 -1.733,-6.165';
+    my @implicit_info;
+    eval {
+	@implicit_info = extract_path_info ($implicit);
+    };
+    ok (! $@, "parse implicit OK");
+    is ($implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
+}
+
 done_testing ();
 exit;
 
