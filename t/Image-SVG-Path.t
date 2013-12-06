@@ -46,6 +46,15 @@ TODO: {
     };
     ok (! $@, "parse implicit OK");
     is ($implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
+    is ($implicit_info[1]{position}, "absolute");
+    my $lc_implicit = lc $implicit;
+    my @lc_implicit_info;
+    eval {
+	@lc_implicit_info = extract_path_info ($lc_implicit);
+    };
+    ok (! $@, "parse implicit OK");
+    is ($lc_implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
+    is ($lc_implicit_info[1]{position}, "relative");
 }
 
 done_testing ();
