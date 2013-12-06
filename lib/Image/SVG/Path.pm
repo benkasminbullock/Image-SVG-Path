@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is
@@ -343,7 +343,7 @@ __END__
 
 =head1 NAME
 
-Image::SVG::Path - reasd the "d" attribute of an SVG path
+Image::SVG::Path - read the "d" attribute of an SVG path
 
 =head1 SYNOPSIS
 
