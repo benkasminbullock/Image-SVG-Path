@@ -37,24 +37,25 @@ eval {
 };
 ok (! $@, "parse exponential");
 
+my $implicit = 'M 0,0 -1.733,-6.165';
+my @implicit_info;
+eval {
+    @implicit_info = extract_path_info ($implicit);
+};
+ok (! $@, "parse implicit OK");
+is ($implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
+is ($implicit_info[1]{position}, "absolute");
+my $lc_implicit = lc $implicit;
+my @lc_implicit_info;
+eval {
+    @lc_implicit_info = extract_path_info ($lc_implicit);
+};
+ok (! $@, "parse implicit OK");
+is ($lc_implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
+is ($lc_implicit_info[1]{position}, "relative");
+
 TODO: {
-    local $TODO = 'implicit moveto/lineto combis';
-    my $implicit = 'M 0,0 -1.733,-6.165';
-    my @implicit_info;
-    eval {
-	@implicit_info = extract_path_info ($implicit);
-    };
-    ok (! $@, "parse implicit OK");
-    is ($implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
-    is ($implicit_info[1]{position}, "absolute");
-    my $lc_implicit = lc $implicit;
-    my @lc_implicit_info;
-    eval {
-	@lc_implicit_info = extract_path_info ($lc_implicit);
-    };
-    ok (! $@, "parse implicit OK");
-    is ($lc_implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
-    is ($lc_implicit_info[1]{position}, "relative");
+    local $TODO = 'put bugs here.';
 }
 
 done_testing ();

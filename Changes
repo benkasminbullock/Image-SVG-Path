@@ -1,5 +1,10 @@
 Revision history for perl module Image::SVG::Path
 
+0.11 2013-12-06
+
+* Add parsing of exponential format
+* Add M followed by implicit linetos
+
 0.10 2013-12-05
 
 * Fix bug with "l" format.
