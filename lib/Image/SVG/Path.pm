@@ -622,14 +622,6 @@ for absolute position and no shortcuts (C elements only).
 
 =over
 
-=item Only cubic bezier curves and lines
-
-This module only parses movetos (I<m> elements), cubic bezier curves
-(I<s> and I<c> elements) and lines (I<l> elements). It does not parse
-quadratic bezier curves (I<q> and I<t> elements), elliptical arcs
-(I<a> elements), or horizontal and vertical line-tos (I<h> and I<v>
-elements).
-
 =item Does not use the grammar
 
 There is a grammar for the paths in the W3 specification. See

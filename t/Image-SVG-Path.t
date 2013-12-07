@@ -82,6 +82,11 @@ my @has_v_info = extract_path_info ($has_v);
 is ($has_v_info[1]{type}, 'vertical-line-to');
 is ($has_v_info[1]{y}, -150);
 
+my $qt = 'M200,300 Q400,50 600,300 T1000,300';
+my @qt_info = extract_path_info ($qt);
+is_deeply ($qt_info[1]{control}, [400,50]);
+is_deeply ($qt_info[2]{end}, [1000,300]);
+
 done_testing ();
 exit;
 
