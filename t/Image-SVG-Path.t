@@ -54,9 +54,33 @@ ok (! $@, "parse implicit OK");
 is ($lc_implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
 is ($lc_implicit_info[1]{position}, "relative");
 
+my $arc = <<EOF;
+M600,350 l 50,-25 
+a25,25 -30 0,1 50,-25 l 50,-25 
+a25,50 -30 0,1 50,-25 l 50,-25 
+a25,75 -30 0,1 50,-25 l 50,-25 
+a25,100 -30 0,1 50,-25 l 50,-25
+EOF
+
+my @arc_info;
+eval {
+    @arc_info = extract_path_info ($arc);
+};
+ok (! $@, "parse arc OK");
+is ($arc_info[2]{y}, -25);
+
 TODO: {
     local $TODO = 'put bugs here.';
 }
+
+my $has_h = 'M300,200 h-150 a150,150 0 1,0 150,-150 z';
+my @has_h_info = extract_path_info ($has_h);
+is ($has_h_info[1]{type}, 'horizontal-line-to');
+is ($has_h_info[1]{x}, -150);
+my $has_v = 'M275,175 v-150 a150,150 0 0,0 -150,150 z';
+my @has_v_info = extract_path_info ($has_v);
+is ($has_v_info[1]{type}, 'vertical-line-to');
+is ($has_v_info[1]{y}, -150);
 
 done_testing ();
 exit;

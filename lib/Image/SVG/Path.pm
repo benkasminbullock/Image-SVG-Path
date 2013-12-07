@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is
@@ -143,7 +143,7 @@ sub extract_path_info
         print "$me: I am trying to split up '$path'.\n";
     }
     my @path_info;
-    my $has_moveto = ($path =~ /^([Mm])\s*($numbers_re)(.*)$/);
+    my $has_moveto = ($path =~ /^\s*([Mm])\s*($numbers_re)(.*)$/s);
     if (! $has_moveto) {
         croak "No moveto at start of path '$path'";
     }
@@ -156,11 +156,12 @@ sub extract_path_info
     my @coords = split $split_re, $move_to;
     push @path_info, {
         type => 'moveto',
+	name => 'moveto',
         position => $position,
         point => [@coords[0, 1]],
         svg_key => $moveto_type,
     };
-    # Deal with any implicit lineto's remaining.
+    # Deal with any implicit line-to's remaining.
     if (@coords > 2) {
 	if ($verbose) {
 	    print "$me: dealing with extra stuff in ", join (', ', @coords),
@@ -174,6 +175,7 @@ sub extract_path_info
 	    my ($x, $y) = ($coords[2*$i], $coords[2*$i + 1]);
 	    push @path_info, {
 		type => 'line-to',
+		name => 'lineto',
 		position => $position,
 		point => [$x, $y],
 		svg_key => ($position eq 'absolute' ? 'L' : 'l'),
@@ -208,6 +210,7 @@ sub extract_path_info
                 # as a separate path.
                 push @path_info, {
                     type => 'cubic-bezier',
+		    name => 'curveto',
                     position => $position,
                     control1 => \@control1,
                     control2 => \@control2,
@@ -229,6 +232,7 @@ sub extract_path_info
                 my @end      = @numbers[$offset + 2, $offset + 3];
                 push @path_info, {
                     type => 'shortcut-cubic-bezier',
+		    name => 'shorthand/smooth curveto',
                     position => $position,
                     control2 => \@control2,
                     end => \@end,
@@ -261,9 +265,83 @@ sub extract_path_info
             my $position = position_type ($curve_type);
 	    push @path_info, {
 		type => 'closepath',
+		name => 'closepath',
 		position => $position,
 		svg_key => $curve_type,
             }
+        }
+        elsif (uc $curve_type eq 'Q') {
+            my $expect_numbers = 4;
+            if (@numbers % $expect_numbers != 0) {
+                croak "Wrong number of values for an L command " .
+                    scalar @numbers . " in '$path'";
+            }
+            my $position = position_type ($curve_type);
+            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
+                my $o = $expect_numbers * $i;
+                push @path_info, {
+                    type => 'quadratic-bezier',
+		    name => 'quadratic Bézier curveto',
+                    position => $position,
+                    control => [@numbers[$o, $o + 1]],
+                    end => [@numbers[$o + 2, $o + 3]],
+                    svg_key => $curve_type,
+                }
+            }
+        }
+        elsif (uc $curve_type eq 'T') {
+            my $expect_numbers = 2;
+            if (@numbers % $expect_numbers != 0) {
+                croak "Wrong number of values for an L command " .
+                    scalar @numbers . " in '$path'";
+            }
+            my $position = position_type ($curve_type);
+            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
+                my $o = $expect_numbers * $i;
+                push @path_info, {
+                    type => 'shortcut-quadratic-bezier',
+		    name => 'Shorthand/smooth quadratic Bézier curveto',
+                    position => $position,
+                    end => [@numbers[$o, $o + 1]],
+                    svg_key => $curve_type,
+                }
+            }
+        }
+        elsif (uc $curve_type eq 'H') {
+            my $position = position_type ($curve_type);
+            for (my $i = 0; $i < @numbers; $i++) {
+                push @path_info, {
+                    type => 'horizontal-line-to',
+		    name => 'horizontal lineto',
+                    position => $position,
+                    x => $numbers[$i],
+                    svg_key => $curve_type,
+                }
+            }
+        }
+        elsif (uc $curve_type eq 'V') {
+            my $position = position_type ($curve_type);
+            for (my $i = 0; $i < @numbers; $i++) {
+                push @path_info, {
+                    type => 'vertical-line-to',
+		    name => 'vertical lineto',
+                    position => $position,
+                    y => $numbers[$i],
+                    svg_key => $curve_type,
+                }
+            }
+        }
+        elsif (uc $curve_type eq 'A') {
+            my $position = position_type ($curve_type);
+	    if (@numbers != 7) {
+		croak "Need 7 parameters for arc";
+	    }
+	    my %arc;
+	    $arc{type} = 'arc';
+	    $arc{name} = 'elliptical arc';
+	    @arc{qw/rx ry x_axis_rotation large_arc_flag sweep_flag x y/} = 
+	    @numbers;
+	    push @path_info, \%arc;
         }
         else {
             croak "I don't know what to do with a curve type '$curve_type'";
@@ -540,10 +618,6 @@ them into an SVG string representing a path.
 This only works for cubic bezier curves and the initial moveto element
 for absolute position and no shortcuts (C elements only).
 
-=head1 DIAGNOSTICS
-
-
-
 =head1 BUGS
 
 =over
@@ -553,7 +627,7 @@ for absolute position and no shortcuts (C elements only).
 This module only parses movetos (I<m> elements), cubic bezier curves
 (I<s> and I<c> elements) and lines (I<l> elements). It does not parse
 quadratic bezier curves (I<q> and I<t> elements), elliptical arcs
-(I<a> elements), or horizontal and vertical linetos (I<h> and I<v>
+(I<a> elements), or horizontal and vertical line-tos (I<h> and I<v>
 elements).
 
 =item Does not use the grammar
