@@ -1,10 +1,7 @@
 use warnings;
 use strict;
 use Test::More;
-BEGIN { 
-    use_ok('Image::SVG::Path', 'extract_path_info');
-};
-use Image::SVG::Path qw/extract_path_info/;
+use Image::SVG::Path qw/extract_path_info create_path_string/;
 
 my $path1 = 'M6.93,103.36c3.61-2.46,6.65-6.21,6.65-13.29c0-1.68-1.36-3.03-3.03-3.03s-3.03,1.36-3.03,3.03s1.36,3.03,3.03,3.03C15.17,93.1,10.4,100.18,6.93,103.36z';
 
@@ -98,6 +95,22 @@ is_deeply ($dblm_info[1]{end}, [50,130]);
 is_deeply ($dblm_info[3]{control}, [250,70]);
 is_deeply ($dblm_info[3]{end}, [200,130]);
 
+my $churchpath = 'M134,25v20h22v15h-22v30l90,63v3h-12v53h-38v-53l-49,-35l-49,35v53h-38v-53h-12v-3l90,-63v-30h-22v-15h22v-20zM103,207v-35a23,20 0 0,1 44,0 v35z';
+my @churchinfo;
+{
+    local $SIG{__WARN__} = sub { die; };
+    eval {
+	@churchinfo = extract_path_info ($churchpath, {
+	    absolute => 1,
+	    no_shortcuts => 1,
+	},);
+    };
+    ok (! $@, "no warnings with church path");
+}
+my $path = create_path_string (\@churchinfo);
+like ($path, qr/A\s+23\.0+,20\.0+,0\.0+,0\.0+,1\.0+,147\.0+,172\.0+/,
+      "arc in path reproduced OK");
+#};
 
 
 done_testing ();

@@ -4,8 +4,12 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.17';
+our $VERSION = '0.18';
 use Carp;
+
+# Yahoo!
+
+my @arc_fields = qw/rx ry x_axis_rotation large_arc_flag sweep_flag x y/;
 
 # Return "relative" or "absolute" depending on whether the command is
 # upper or lower case.
@@ -91,6 +95,19 @@ sub create_path_string
         elsif ($t eq 'closepath') {
             $path .= "Z";
         }
+	elsif ($t eq 'vertical-line-to') {
+	    $path .= sprintf ("V%f ", $element->{y});
+	}
+	elsif ($t eq 'horizontal-line-to') {
+	    $path .= sprintf ("H%f ", $element->{x});
+	}
+	elsif ($t eq 'line-to') {
+	    $path .= sprintf ("L%f,%f ", @{$element->{point}});
+	}
+	elsif ($t eq 'arc') {
+	    my @f = map {sprintf ("%f", $element->{$_})} @arc_fields;
+	    $path .= "A ". join (',', @f) . " ";
+	}
 	else {
             croak "Don't know how to deal with type '$t'";
         }
@@ -255,10 +272,10 @@ sub extract_path_info
                     position => $position,
 		    # Bugwards compatibility, keep "end" even though
 		    # it's a bug.
-                    end => [@numbers[$offset, $offset + 1]],
+                    end => $point,
 		    point => $point,
                     svg_key => $curve_type,
-                }
+                };
             }
         }
         elsif (uc $curve_type eq 'Z') {
@@ -320,7 +337,7 @@ sub extract_path_info
                     position => $position,
                     x => $numbers[$i],
                     svg_key => $curve_type,
-                }
+                };
             }
         }
         elsif (uc $curve_type eq 'V') {
@@ -332,7 +349,7 @@ sub extract_path_info
                     position => $position,
                     y => $numbers[$i],
                     svg_key => $curve_type,
-                }
+                };
             }
         }
         elsif (uc $curve_type eq 'A') {
@@ -341,10 +358,11 @@ sub extract_path_info
 		croak "Need 7 parameters for arc";
 	    }
 	    my %arc;
+	    $arc{svg_key} = $curve_type;
 	    $arc{type} = 'arc';
 	    $arc{name} = 'elliptical arc';
-	    @arc{qw/rx ry x_axis_rotation large_arc_flag sweep_flag x y/} = 
-	    @numbers;
+	    $arc{position} = $position;
+	    @arc{@arc_fields} = @numbers;
 	    push @path_info, \%arc;
         }
 	elsif (uc $curve_type eq 'M') {
@@ -373,7 +391,7 @@ sub extract_path_info
         if ($verbose) {
             print "Making all coordinates absolute.\n";
         }
-        my $abs_pos;
+        my @abs_pos;
         my $previous;
         for my $element (@path_info) {
             if ($element->{type} eq 'moveto') {
@@ -387,26 +405,38 @@ sub extract_path_info
                         add_coords ($element->{point}, $ip);
                     }
                 }
-                $abs_pos = $element->{point};
+                @abs_pos = @{$element->{point}};
             }
             elsif ($element->{type} eq 'line-to') {
                 if ($element->{position} eq 'relative') {
-                    add_coords ($element->{end},      $abs_pos);
+                    add_coords ($element->{point}, \@abs_pos);
                 }
-                $abs_pos = $element->{end};
+                @abs_pos = @{$element->{point}};
+            }
+            elsif ($element->{type} eq 'horizontal-line-to') {
+                if ($element->{position} eq 'relative') {
+		    $element->{x} += $abs_pos[0];
+                }
+                $abs_pos[0] = $element->{x};
+            }
+            elsif ($element->{type} eq 'vertical-line-to') {
+                if ($element->{position} eq 'relative') {
+		    $element->{y} += $abs_pos[1];
+                }
+                $abs_pos[1] = $element->{y};
             }
             elsif ($element->{type} eq 'cubic-bezier') {
                 if ($element->{position} eq 'relative') {
-                    add_coords ($element->{control1}, $abs_pos);
-                    add_coords ($element->{control2}, $abs_pos);
-                    add_coords ($element->{end},      $abs_pos);
+                    add_coords ($element->{control1}, \@abs_pos);
+                    add_coords ($element->{control2}, \@abs_pos);
+                    add_coords ($element->{end},      \@abs_pos);
                 }
-                $abs_pos = $element->{end};
+                @abs_pos = @{$element->{end}};
             }
             elsif ($element->{type} eq 'shortcut-cubic-bezier') {
                 if ($element->{position} eq 'relative') {
-                    add_coords ($element->{control2}, $abs_pos);
-                    add_coords ($element->{end},      $abs_pos);
+                    add_coords ($element->{control2}, \@abs_pos);
+                    add_coords ($element->{end},      \@abs_pos);
                 }
                 if ($no_shortcuts) {
                     if (!$previous) {
@@ -418,13 +448,28 @@ sub extract_path_info
                     $element->{type} = 'cubic-bezier';
                     $element->{svg_key} = 'C';
                     $element->{control1} = [
-                        2 * $abs_pos->[0] - $previous->{control2}->[0],
-                        2 * $abs_pos->[1] - $previous->{control2}->[1],
+                        2 * $abs_pos[0] - $previous->{control2}->[0],
+                        2 * $abs_pos[1] - $previous->{control2}->[1],
                     ];
                 }
-                $abs_pos = $element->{end};
+                @abs_pos = @{$element->{end}};
             }
+	    elsif ($element->{type} eq 'arc') {
+
+		# Untested.
+#		print "before: @abs_pos\n";
+
+                if ($element->{position} eq 'relative') {
+		    $element->{x} += $abs_pos[0];
+		    $element->{y} += $abs_pos[1];
+		}
+                @abs_pos = ($element->{x}, $element->{y});
+#		print "after: @abs_pos\n";
+	    }
             $element->{position} = 'absolute';
+	    if (! $element->{svg_key}) {
+		die "No SVG key";
+	    }
             $element->{svg_key} = uc $element->{svg_key};
             $previous = $element;
         }
