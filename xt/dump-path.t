@@ -3,12 +3,12 @@ use warnings;
 use strict;
 use Image::SVG::Path qw/extract_path_info/;
 
-@path_info = extract_path_info ($path1, {verbose => 1, absolute => 1});
+#my @path_info = extract_path_info ($path1, {verbose => 1, absolute => 1});
 
-dump_path (@path_info);
-@path_info = extract_path_info ($path1, {verbose => 1, absolute => 1, no_shortcuts => 1});
+#dump_path (@path_info);
+#@path_info = extract_path_info ($path1, {verbose => 1, absolute => 1, no_shortcuts => 1});
 
-dump_path (@path_info);
+#dump_path (@path_info);
 
 my $path2 = "M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z";
 

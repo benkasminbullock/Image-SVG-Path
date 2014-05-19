@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.13';
+our $VERSION = '0.17';
 use Carp;
 
 # Return "relative" or "absolute" depending on whether the command is
@@ -184,7 +184,7 @@ sub extract_path_info
     }
     # Deal with the rest of the path.
     my @curves;
-    while ($curves =~ /([cslqtahvz])\s*($numbers_re)/gi) {
+    while ($curves =~ /\G([cslqtahvzm])\s*($numbers_re)/gi) {
         push @curves, [$1, $2];
     }
     for my $curve_data (@curves) {
@@ -249,10 +249,14 @@ sub extract_path_info
             my $position = position_type ($curve_type);
             for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
                 my $offset = $expect_numbers * $i;
+		my $point = [@numbers[$offset, $offset + 1]];
                 push @path_info, {
                     type => 'line-to',
                     position => $position,
+		    # Bugwards compatibility, keep "end" even though
+		    # it's a bug.
                     end => [@numbers[$offset, $offset + 1]],
+		    point => $point,
                     svg_key => $curve_type,
                 }
             }
@@ -343,6 +347,19 @@ sub extract_path_info
 	    @numbers;
 	    push @path_info, \%arc;
         }
+	elsif (uc $curve_type eq 'M') {
+	    my $position = position_type ($curve_type);
+	    if (@numbers != 2) {
+		croak "Need 2 numbers for move to";
+	    }
+	    push @path_info, {
+		type => 'moveto',
+		name => 'moveto',
+		position => $position,
+		point => [@numbers],
+		svg_key => $curve_type,
+	    };
+	}
         else {
             croak "I don't know what to do with a curve type '$curve_type'";
         }
@@ -435,7 +452,7 @@ SVG <path> element and turns it into a simpler series of steps.
 
 For example, an SVG <path> element might take the form
 
-<path d="M9.6,20.25c0.61,0.37,3.91,0.45,4.52,0.34c2.86-0.5,14.5-2.09,21.37-2.64c0.94-0.07,2.67-0.26,3.45,0.04"/>
+    <path d="M9.6,20.25c0.61,0.37,3.91,0.45,4.52,0.34c2.86-0.5,14.5-2.09,21.37-2.64c0.94-0.07,2.67-0.26,3.45,0.04"/>
 
 Using an XML parser, such as L<XML::Parser>,
 
@@ -617,6 +634,175 @@ them into an SVG string representing a path.
 
 This only works for cubic bezier curves and the initial moveto element
 for absolute position and no shortcuts (C elements only).
+
+=head1 SVG path elements
+
+This section documents the output elements. For example, if we extract
+the path information from a path C<$d> using
+
+    my @path = extract_path_info ($d);
+
+then each element of C<@path> is a hash reference containing one of
+the following types of elements and the corresponding hash keys.
+
+An SVG path consists of a sequence of movements from one point to
+another, so each of the following steps in the path begins from the
+end point of the previous movement.
+
+=head2 Move to elements
+
+=over
+
+=item svg_key
+
+This is M or m.
+
+=item point
+
+This is the point to move to.
+
+=back
+
+=head2 Line elements
+
+=over
+
+=item svg_key
+
+This is L or l.
+
+=item point
+
+This is the end point of the line.
+
+=item end
+
+This field occurs in some lines for backwards compatibility with
+pre-0.16 versions of the module.
+
+=back
+
+=head2 Cubic bezier curve elements
+
+=over
+
+=item svg_key
+
+This is C or c.
+
+=item control1
+
+Control point 1 of the curve.
+
+=item control2
+
+Control point 2 of the curve.
+
+=item end
+
+The end point of the curve.
+
+=back
+
+=head2 Shortcut cubic bezier curve elements
+
+Use the L</no_shortcuts> option to remove these automatically.
+
+=over
+
+=item svg_key
+
+This is S or s.
+
+=item control2
+
+This is the second control point of the curve (the first one is implicit).
+
+=item end
+
+This is the end point of the curve.
+
+=back
+
+=head2 Quadratic bezier curve elements
+
+=over
+
+=item svg_key
+
+This is Q or q.
+
+=item control
+
+This is the control point.
+
+=item end
+
+This is the end point.
+
+=back
+
+=head2 Shortcut quadratic Bezier curves
+
+Use the L</no_shortcuts> option to remove these automatically.
+
+=over
+
+=item svg_key
+
+This is T or t.
+
+=item end
+
+This is the end point.
+
+=back
+
+=head2 Arc elements
+
+=over
+
+=item rx, ry
+
+X and Y radiuses
+
+=item x_axis_rotation
+
+=item large_arc_flag
+
+=item sweep_flag
+
+=item x, y
+
+=back
+
+=head2 Horizontal line elements
+
+=over
+
+=item svg_key
+
+This is H or h.
+
+=item x
+
+This is the x coordinate of the end point. The y coordinate is implicit.
+
+=back
+
+=head2 Vertical line elements
+
+=over
+
+=item svg_key
+
+This is V or v.
+
+=item y
+
+This is the y coordinate of the end point. The x coordinate is implicit.
+
+=back
 
 =head1 BUGS
 

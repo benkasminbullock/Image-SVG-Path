@@ -1,5 +1,27 @@
 Revision history for perl module Image::SVG::Path
 
+0.17 2014-05-19
+
+* Allow multiple "moveto" elements in a path.
+* Stricter regular expression (use "\G" to catch unparsed elements).
+
+0.16 2014-05-19
+
+* Document output format
+* Change partial use of "end" to "point" in the line output type
+
+0.15 2014-02-05
+
+* Add MIN_PERL_VERSION in "Makefile.PL".
+
+0.14 2013-12-24
+
+* CPANTS fixes
+
+0.13 2013-12-07
+
+* Add support for q, t, a, h and v controls.
+
 0.12 2013-12-06
 
 * Minor fixes

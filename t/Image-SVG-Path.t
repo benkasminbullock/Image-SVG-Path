@@ -87,6 +87,19 @@ my @qt_info = extract_path_info ($qt);
 is_deeply ($qt_info[1]{control}, [400,50]);
 is_deeply ($qt_info[2]{end}, [1000,300]);
 
+# Cope with second "M" in path.
+
+my $dblm = 'M 50 10 Q 0 70 50 130 M 200 10 Q 250 70 200 130';
+my @dblm_info = extract_path_info ($dblm);
+is ($dblm_info[2]{svg_key}, 'M', "Got second M in path");
+is_deeply ($dblm_info[2]{point}, [200,10], "Got correct point value");
+is_deeply ($dblm_info[1]{control}, [0,70]);
+is_deeply ($dblm_info[1]{end}, [50,130]);
+is_deeply ($dblm_info[3]{control}, [250,70]);
+is_deeply ($dblm_info[3]{end}, [200,130]);
+
+
+
 done_testing ();
 exit;
 
