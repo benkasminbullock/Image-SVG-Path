@@ -1,0 +1,433 @@
+=head1 NAME
+
+Image::SVG::Path - read the "d" attribute of an SVG path
+
+=head1 SYNOPSIS
+
+    use Image::SVG::Path 'extract_path_info';
+    my @path_info = extract_path_info ($path_d_attribute);
+
+=head1 DESCRIPTION
+
+This module extracts information contained in the "d" attribute of an
+SVG <path> element and turns it into a simpler series of steps. 
+
+For example, an SVG <path> element might take the form
+
+    <path d="M9.6,20.25c0.61,0.37,3.91,0.45,4.52,0.34c2.86-0.5,14.5-2.09,21.37-2.64c0.94-0.07,2.67-0.26,3.45,0.04"/>
+
+Using an XML parser, such as L<XML::Parser>,
+
+    use XML::Parser;
+    use Image::SVG::Path 'extract_path_info';
+    my $p = XML::Parser->new (Handlers => {Start => \& start});
+    $p->parsefile ($file)
+        or die "Error $file: ";
+
+    sub start
+    {
+        my ($expat, $element, %attr) = @_;
+
+        if ($element eq 'path') {
+            my $d = $attr{d};
+            my @r = extract_path_info ($d);
+            # Do something with path info in @r
+        }
+    }
+
+SVG means "scalable vector graphics" and it is a standard of the W3
+consortium. See L</SVG standards> for details.  Although SVG is a type
+of XML, the text in the C<d> attribute of SVG paths is not XML but a
+condensed form using single letters and numbers. This module is a
+parser for that condensed format.
+
+=head1 FUNCTIONS
+
+=head2 extract_path_info
+
+    my @path_info = extract_path_info ($path_d_attribute);
+
+Turn the SVG path string into a series of simpler things. For example,
+
+    my @path_info = extract_path_info ('M6.93,103.36c3.61-2.46,6.65-6.21,6.65-13.29c0-1.68-1.36-3.03-3.03-3.03s-3.03,1.36-3.03,3.03s1.36,3.03,3.03,3.03C15.17,93.1,10.4,100.18,6.93,103.36z');
+
+    my $count = 0;
+    for my $element (@path_info) {                
+        $count++;                                 
+        print "Element $count:\n";                
+        for my $k (keys %$element) {              
+            my $val = $element->{$k};             
+            if (ref $val eq 'ARRAY') {            
+                $val = "[$val->[0], $val->[1]]";  
+            }                                     
+            print "   $k -> $val\n";              
+        }                                         
+    }
+
+This prints out
+  
+    Element 1:                         
+       point -> [6.93, 103.36]         
+       svg_key -> M                    
+       position -> absolute            
+       type -> moveto                  
+    Element 2:                         
+       control1 -> [3.61, -2.46]       
+       svg_key -> c                    
+       control2 -> [6.65, -6.21]       
+       position -> relative            
+       type -> cubic-bezier            
+       end -> [6.65, -13.29]           
+    Element 3:                         
+       control1 -> [0, -1.68]          
+       svg_key -> c                    
+       control2 -> [-1.36, -3.03]      
+       position -> relative            
+       type -> cubic-bezier            
+       end -> [-3.03, -3.03]           
+    Element 4:                         
+       svg_key -> s                    
+       control2 -> [-3.03, 1.36]       
+       position -> relative            
+       type -> shortcut-cubic-bezier   
+       end -> [-3.03, 3.03]            
+    Element 5:                         
+       svg_key -> s                    
+       control2 -> [1.36, 3.03]        
+       position -> relative            
+       type -> shortcut-cubic-bezier   
+       end -> [3.03, 3.03]             
+    Element 6:                         
+       control1 -> [15.17, 93.1]       
+       svg_key -> C                    
+       control2 -> [10.4, 100.18]      
+       position -> absolute            
+       type -> cubic-bezier            
+       end -> [6.93, 103.36]
+    Element 7:
+       svg_key -> z
+       position -> relative
+       type -> closepath
+
+The return value is a list of hash references. Each hash reference has
+at least three keys, C<type>, C<position>, and C<svg_key>. The C<type>
+field says what type of thing it is, for example a cubic bezier curve
+or a line. The C<position> value is either "relative" or "absolute"
+depending on whether the coordinates of this step of the path are
+relative to the current point (relative) or to the drawing's origin
+(absolute). The C<svg_key> field is the original key from the
+path. C<position> is relative if this key is lower case and absolute
+if this key is upper case.
+
+If C<type> is C<moveto>, the hash reference contains one more field,
+C<point>, which is the point to move to. This is an array reference
+containing the I<x> and I<y> coordinates as elements indexed 0 and 1
+respectively.
+
+If the type is C<cubic-bezier>, the hash reference contains three more
+fields, C<control1>, C<control2> and C<end>. The value of each is an
+array reference containing the I<x> and I<y> coordinates of the first
+and second control points and the end point of the Bezier curve
+respectively. (The start point of the curve is the end point of the
+previous part of the path.)
+
+If the type is C<shortcut-cubic-bezier>, the hash contains two more
+fields, C<control2> and C<end>. C<control2> is the second control
+point, and C<end> is the end point. The first control point is got by
+reflecting the second control point of the previous curve around the
+end point of the previous curve (the start point of the current
+curve). 
+
+There is also an option L</no_shortcuts> which automatically replaces
+shortcut cubic bezier curves with the normal kind, by calculating the
+first control point.
+
+A second argument to C<extract_path_info> contains options for the
+extraction in the form of a hash reference. For example,
+
+    my @path_info = extract_path_info ($path, {absolute => 1});
+
+The following may be chosen by adding them to the hash reference:
+
+=over
+
+=item absolute
+
+If the hash element C<absolute> is set to a true value, relative
+positions are changed to absolute. For example a "c" curve is changed
+to the equivalent "C" curve.
+
+=item no_shortcuts
+
+If the hash element C<no_shortcuts> is set to a true value then
+shortcuts ("S" curves) are changed into the equivalent "C" curves. A
+deficiency of this is that it only works in combination with the
+"absolute" option, otherwise it does nothing.
+
+=item verbose
+
+If this is set to a true value, C<extract_path_info> prints out
+informative messages about what it is doing as it parses the path.
+
+=back
+
+=head2 reverse_path
+
+    my $reverse_path = reverse_path ($path);
+
+Make an SVG path which is the exact reverse of the input.
+
+=head3 Bugs
+
+This only works for cubic bezier curves with absolute position and no
+shortcuts (C elements only). It doesn't fill in all the information
+correctly.
+
+=head2 create_path_string
+
+    my $path = create_path_string (\@info);
+
+Given a set of information as created by L</extract_path_info>, turn
+them into an SVG string representing a path.
+
+=head3 Bugs
+
+This only works for cubic bezier curves and the initial moveto element
+for absolute position and no shortcuts (C elements only).
+
+=head1 SVG path elements
+
+This section documents the output elements. For example, if we extract
+the path information from a path C<$d> using
+
+    my @path = extract_path_info ($d);
+
+then each element of C<@path> is a hash reference containing one of
+the following types of elements and the corresponding hash keys.
+
+An SVG path consists of a sequence of movements from one point to
+another, so each of the following steps in the path begins from the
+end point of the previous movement.
+
+=head2 Move to elements
+
+=over
+
+=item svg_key
+
+This is M or m.
+
+=item point
+
+This is the point to move to.
+
+=back
+
+=head2 Line elements
+
+=over
+
+=item svg_key
+
+This is L or l.
+
+=item point
+
+This is the end point of the line.
+
+=item end
+
+This field occurs in some lines for backwards compatibility with
+pre-0.16 versions of the module.
+
+=back
+
+=head2 Cubic bezier curve elements
+
+=over
+
+=item svg_key
+
+This is C or c.
+
+=item control1
+
+Control point 1 of the curve.
+
+=item control2
+
+Control point 2 of the curve.
+
+=item end
+
+The end point of the curve.
+
+=back
+
+=head2 Shortcut cubic bezier curve elements
+
+Use the L</no_shortcuts> option to automatically convert these into
+cubic bezier curve elements.
+
+=over
+
+=item svg_key
+
+This is S or s.
+
+=item control2
+
+This is the second control point of the curve (the first one is implicit).
+
+=item end
+
+This is the end point of the curve.
+
+=back
+
+=head2 Quadratic bezier curve elements
+
+=over
+
+=item svg_key
+
+This is Q or q.
+
+=item control
+
+This is the control point.
+
+=item end
+
+This is the end point.
+
+=back
+
+=head2 Shortcut quadratic Bezier curves
+
+Use the L</no_shortcuts> option to automatically convert these into
+quadratic bezier curves.
+
+=over
+
+=item svg_key
+
+This is T or t.
+
+=item end
+
+This is the end point.
+
+=back
+
+=head2 Arc elements
+
+Arcs are omitted from L</SVG Tiny>.
+
+=over
+
+=item rx, ry
+
+X and Y radiuses
+
+=item x_axis_rotation
+
+See the SVG documentation for details.
+
+=item large_arc_flag
+
+See the SVG documentation for details.
+
+=item sweep_flag
+
+See the SVG documentation for details.
+
+=item x, y
+
+These are the end points of the arc.
+
+=back
+
+=head2 Horizontal line elements
+
+=over
+
+=item svg_key
+
+This is H or h.
+
+=item x
+
+This is the x coordinate of the end point. The y coordinate is implicit.
+
+=back
+
+=head2 Vertical line elements
+
+=over
+
+=item svg_key
+
+This is V or v.
+
+=item y
+
+This is the y coordinate of the end point. The x coordinate is implicit.
+
+=back
+
+=head1 BUGS
+
+=over
+
+=item Does not use the grammar
+
+There is a grammar for the paths in the W3 specification. See
+L<http://www.w3.org/TR/SVG/paths.html#PathDataBNF>. However, this
+module does not use that grammar. Instead it hacks up the path using
+regexes.
+
+=back
+
+=head1 EXPORTS
+
+The module exports L</extract_path_info> on demand, so 
+
+     use Image::SVG::Path 'extract_path_info';
+
+imports it.
+
+=head1 SEE ALSO
+
+L<MarpaX::Languages::SVG::Parser>
+
+This parser uses the SVG grammar mentioned in L</BUGS>.
+
+=head2 SVG standards
+
+L<The full specification|http://www.w3.org/TR/SVG/> contains all the
+details. The L<SVG path
+specification|http://www.w3.org/TR/SVG/paths.html> contains the
+specifications for paths.
+
+=head3 SVG Tiny
+
+L<SVG Tiny|http://www.w3.org/TR/SVGTiny12/index.html> is a subset of
+SVG. It claims to have a L<Perl Language
+Binding|http://www.w3.org/TR/SVGTiny12/perl-binding.html>, but I
+cannot locate the source code.
+
+There is also another standard, SVG basic, I'm not too sure whether
+either this or SVG Tiny are in use.
+
+=head1 AUTHOR
+
+Ben Bullock, <bkb@cpan.org>
+
+=head1 LICENCE
+
+This module and all associated files can be used, modified and
+distributed under either the Perl artistic licence or the GNU General
+Public Licence.
+
+=cut

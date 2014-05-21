@@ -5,12 +5,13 @@ use ExtUtils::MakeMaker;
 # $pm points to the main file of this package.
 
 my $pm = 'lib/Image/SVG/Path.pm';
+my $pm = 'lib/Image/SVG/Path.pod';
 my $repo = 'https://github.com/benkasminbullock/Image-SVG-Path';
 
 WriteMakefile (
     NAME => 'Image::SVG::Path',
     VERSION_FROM => $pm,
-    ABSTRACT_FROM => $pm,
+    ABSTRACT_FROM => $pod,
     AUTHOR => 'Ben Bullock <bkb@cpan.org>',
     LICENSE => 'perl',
     META_MERGE => {
