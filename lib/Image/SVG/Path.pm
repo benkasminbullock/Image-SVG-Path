@@ -4,10 +4,10 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 use Carp;
 
-# Yahoo!
+# These are fields in the "arc" hash.
 
 my @arc_fields = qw/rx ry x_axis_rotation large_arc_flag sweep_flag x y/;
 
