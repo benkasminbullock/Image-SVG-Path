@@ -399,6 +399,12 @@ imports it.
 
 =head1 SEE ALSO
 
+L<SVG::Rasterize>
+
+This contains a complete parser for SVG paths in
+C<SVG::Rasterize::Engine::PangoCairo>. It is embedded into the module
+and is used to draw with L<Cairo>.
+
 L<MarpaX::Languages::SVG::Parser>
 
 This parser uses the SVG grammar mentioned in L</BUGS>.
