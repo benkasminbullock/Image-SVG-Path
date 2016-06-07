@@ -294,7 +294,7 @@ sub extract_path_info
         elsif (uc $curve_type eq 'Q') {
             my $expect_numbers = 4;
             if (@numbers % $expect_numbers != 0) {
-                croak "Wrong number of values for an L command " .
+                croak "Wrong number of values for an Q command " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($curve_type);
@@ -313,7 +313,7 @@ sub extract_path_info
         elsif (uc $curve_type eq 'T') {
             my $expect_numbers = 2;
             if (@numbers % $expect_numbers != 0) {
-                croak "Wrong number of values for an L command " .
+                croak "Wrong number of values for an T command " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($curve_type);
