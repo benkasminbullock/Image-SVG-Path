@@ -2,4 +2,8 @@
 use warnings;
 use strict;
 use Perl::Build;
-perl_build;
+use FindBin '$Bin';
+perl_build (
+pod => ["lib/Image/SVG/Path.pod"],
+);
+

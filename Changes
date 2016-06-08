@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.20 2016-06-08
+
+* Error messages improved
+
 0.19 2014-05-21
 
 * Documentation cleanup
