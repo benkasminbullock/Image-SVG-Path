@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 use Carp;
 
 # These are fields in the "arc" hash.
