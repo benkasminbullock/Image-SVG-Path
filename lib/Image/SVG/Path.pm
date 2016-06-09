@@ -120,7 +120,7 @@ sub create_path_string
 
 my $split_re = qr/
 		     (?:
-			 ,
+			 \s*,\s*
 		     |
 			 (?<!e)(?=-)
 		     |
@@ -130,9 +130,9 @@ my $split_re = qr/
 
 # Match a number
 
-my $number_re = qr/[-0-9.,e]+/i;
+my $number_re = qr/[-0-9.e]+/i;
 
-my $numbers_re = qr/(?:$number_re|\s)*/;
+my $numbers_re = qr/(?:$number_re|(?:\s|,)+)*/;
 
 sub extract_path_info
 {
