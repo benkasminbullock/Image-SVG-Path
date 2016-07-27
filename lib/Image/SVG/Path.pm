@@ -184,20 +184,7 @@ sub extract_path_info
 	    print "$me: dealing with extra stuff in ", join (', ', @coords),
 	    ".\n";
 	}
-	my $n_coords = scalar (@coords);
-	if ($n_coords % 2 != 0) {
-	    croak "Odd number of coordinates";
-	}
-	for my $i (1..($n_coords / 2 - 1)) {
-	    my ($x, $y) = ($coords[2*$i], $coords[2*$i + 1]);
-	    push @path_info, {
-		type => 'line-to',
-		name => 'lineto',
-		position => $position,
-		point => [$x, $y],
-		svg_key => ($position eq 'absolute' ? 'L' : 'l'),
-	    };
-	}
+	push @path_info, build_lineto($position, @coords);
     }
     # Deal with the rest of the path.
     my @curves;
@@ -259,24 +246,13 @@ sub extract_path_info
         }
         elsif (uc $curve_type eq 'L') {
             my $expect_numbers = 2;
+	    ##Maintain this check here, even though it's duplicated inside of build_lineto, because it's specific to the lineto
             if (@numbers % $expect_numbers != 0) {
                 croak "Wrong number of values for an L command " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($curve_type);
-            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
-                my $offset = $expect_numbers * $i;
-		my $point = [@numbers[$offset, $offset + 1]];
-                push @path_info, {
-                    type => 'line-to',
-                    position => $position,
-		    # Bugwards compatibility, keep "end" even though
-		    # it's a bug.
-                    end => $point,
-		    point => $point,
-                    svg_key => $curve_type,
-                };
-            }
+	    push @path_info, build_lineto($position, @numbers);
         }
         elsif (uc $curve_type eq 'Z') {
             if (@numbers > 0) {
@@ -367,8 +343,15 @@ sub extract_path_info
         }
 	elsif (uc $curve_type eq 'M') {
 	    my $position = position_type ($curve_type);
-	    if (@numbers != 2) {
+	    if (@numbers < 2) {
 		croak "Need 2 numbers for move to";
+	    }
+	    elsif (@numbers % 2) {
+		croak "Cannot deal with odd numbers of coordinates for move to";
+	    }
+	    my @implicit_lineto = ();
+	    if (@numbers > 2) {
+	    	@implicit_lineto = splice @numbers, 2;
 	    }
 	    push @path_info, {
 		type => 'moveto',
@@ -377,6 +360,7 @@ sub extract_path_info
 		point => [@numbers],
 		svg_key => $curve_type,
 	    };
+	    push @path_info, build_lineto($position, @implicit_lineto);
 	}
         else {
             croak "I don't know what to do with a curve type '$curve_type'";
@@ -473,6 +457,26 @@ sub extract_path_info
             $element->{svg_key} = uc $element->{svg_key};
             $previous = $element;
         }
+    }
+    return @path_info;
+}
+
+sub build_lineto {
+    my ($position, @coords) = @_;
+    my @path_info = ();
+    my $n_coords = scalar (@coords);
+    if ($n_coords % 2 != 0) {
+	croak "Odd number of coordinates in implicit lineto";
+    }
+    while (my ($x, $y) = splice @coords, 0, 2) {
+	push @path_info, {
+	    type => 'line-to',
+	    name => 'lineto',
+	    position => $position,
+	    point => [$x, $y],
+	    end => [$x, $y],
+	    svg_key => ($position eq 'absolute' ? 'L' : 'l'),
+	};
     }
     return @path_info;
 }
