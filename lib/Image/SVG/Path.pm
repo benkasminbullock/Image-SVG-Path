@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.20';
+our $VERSION = '0.23';
 use Carp;
 
 # These are fields in the "arc" hash.
@@ -184,7 +184,7 @@ sub extract_path_info
 	    print "$me: dealing with extra stuff in ", join (', ', @coords),
 	    ".\n";
 	}
-	push @path_info, build_lineto($position, @coords);
+	push @path_info, build_lineto($position, splice @coords, 2);
     }
     # Deal with the rest of the path.
     my @curves;
