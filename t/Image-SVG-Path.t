@@ -19,13 +19,13 @@ my @path2_info = extract_path_info ($path2);
 is ($path2_info[0]->{type}, 'moveto');
 is ($path2_info[1]->{type}, 'line-to');
 is ($path2_info[1]->{position}, 'relative');
-is ($path2_info[1]->{end}->[0], 4);
-is ($path2_info[1]->{end}->[1], 5);
+is ($path2_info[1]->{point}->[0], 4);
+is ($path2_info[1]->{point}->[1], 5);
 
-my @path2_info_abs = extract_path_info ($path2, {absolute => 1});
+my @path2_info_abs = extract_path_info ($path2, {absolute => 1, verbose => 1, });
 
-is ($path2_info_abs[1]->{end}->[0], 6);
-is ($path2_info_abs[1]->{end}->[1], 8);
+is ($path2_info_abs[1]->{point}->[0], 6);
+is ($path2_info_abs[1]->{point}->[1], 8);
 
 my $path3 = 'M6.93,103.36c3.61-2.46,6.65-6.21,6.65-13.29c0-1.68-1.36-3e-3-3.03-3.03s-3.03,1.36-3.03,3.03s1.36,3.03,3.03,3.03C15.17,93.1,10.4,100.18,6.93,103.36z';
 
@@ -94,6 +94,16 @@ is_deeply ($dblm_info[1]{control}, [0,70]);
 is_deeply ($dblm_info[1]{end}, [50,130]);
 is_deeply ($dblm_info[3]{control}, [250,70]);
 is_deeply ($dblm_info[3]{end}, [200,130]);
+
+# Cope with second "M" in path, with extra linetos.
+
+my $dblm2 = 'M 50 10 Q 0 70 50 130 M 200 10 200 20';
+@dblm_info = extract_path_info ($dblm2);
+diag explain @dblm_info;
+is ($dblm_info[2]{svg_key}, 'M', "Got second M in path");
+is_deeply ($dblm_info[2]{point}, [200,10], "Got correct point value");
+is        ($dblm_info[3]{name},  'lineto', "Inserted implicit moveto");
+is_deeply ($dblm_info[3]{point}, [200,20], "... Got correct point value");
 
 my $churchpath = 'M134,25v20h22v15h-22v30l90,63v3h-12v53h-38v-53l-49,-35l-49,35v53h-38v-53h-12v-3l90,-63v-30h-22v-15h22v-20zM103,207v-35a23,20 0 0,1 44,0 v35z';
 my @churchinfo;

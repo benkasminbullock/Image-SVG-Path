@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.21 2016-07-26
+
+* Handle implicit line-to's in extended move-to syntax
+
 0.20 2016-06-08
 
 * Error messages improved
