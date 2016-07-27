@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 use Carp;
 
 # These are fields in the "arc" hash.
@@ -171,6 +171,9 @@ sub extract_path_info
     # Deal with the initial "move to" command.
     my $position = position_type ($moveto_type);
     my @coords = split $split_re, $move_to;
+    if (@coords < 2) {
+	croak "Not enough numerical values for the initial M command in '$path'";
+    }
     push @path_info, {
         type => 'moveto',
 	name => 'moveto',
@@ -180,24 +183,18 @@ sub extract_path_info
     };
     # Deal with any implicit line-to's remaining.
     if (@coords > 2) {
+	# Check the number of coordinates is valid.
+	if (@coords % 2 != 0) {
+	    croak "Odd number of values for an implicit L command " .
+	    scalar (@coords) . " in '$path'";
+	}
 	if ($verbose) {
 	    print "$me: dealing with extra stuff in ", join (', ', @coords),
 	    ".\n";
 	}
-	my $n_coords = scalar (@coords);
-	if ($n_coords % 2 != 0) {
-	    croak "Odd number of coordinates";
-	}
-	for my $i (1..($n_coords / 2 - 1)) {
-	    my ($x, $y) = ($coords[2*$i], $coords[2*$i + 1]);
-	    push @path_info, {
-		type => 'line-to',
-		name => 'lineto',
-		position => $position,
-		point => [$x, $y],
-		svg_key => ($position eq 'absolute' ? 'L' : 'l'),
-	    };
-	}
+	# Add the remaining numbers as line-to elements, deleting the
+	# first two.
+	push @path_info, build_lineto ($position, splice (@coords, 2));
     }
     # Deal with the rest of the path.
     my @curves;
@@ -259,24 +256,14 @@ sub extract_path_info
         }
         elsif (uc $curve_type eq 'L') {
             my $expect_numbers = 2;
+	    # Maintain this check here, even though it's duplicated
+	    # inside build_lineto, because it's specific to the lineto
             if (@numbers % $expect_numbers != 0) {
-                croak "Wrong number of values for an L command " .
-                    scalar @numbers . " in '$path'";
+                croak "Odd number of values for an L command " .
+                    scalar (@numbers) . " in '$path'";
             }
             my $position = position_type ($curve_type);
-            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
-                my $offset = $expect_numbers * $i;
-		my $point = [@numbers[$offset, $offset + 1]];
-                push @path_info, {
-                    type => 'line-to',
-                    position => $position,
-		    # Bugwards compatibility, keep "end" even though
-		    # it's a bug.
-                    end => $point,
-		    point => $point,
-                    svg_key => $curve_type,
-                };
-            }
+	    push @path_info, build_lineto ($position, @numbers);
         }
         elsif (uc $curve_type eq 'Z') {
             if (@numbers > 0) {
@@ -294,7 +281,7 @@ sub extract_path_info
         elsif (uc $curve_type eq 'Q') {
             my $expect_numbers = 4;
             if (@numbers % $expect_numbers != 0) {
-                croak "Wrong number of values for an Q command " .
+                croak "Wrong number of values for a Q command " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($curve_type);
@@ -366,22 +353,34 @@ sub extract_path_info
 	    push @path_info, \%arc;
         }
 	elsif (uc $curve_type eq 'M') {
+            my $expect_numbers = 2;
 	    my $position = position_type ($curve_type);
-	    if (@numbers != 2) {
-		croak "Need 2 numbers for move to";
+	    if (@numbers < $expect_numbers) {
+		croak "Need at least $expect_numbers numbers for move to";
 	    }
+            if (@numbers % $expect_numbers != 0) {
+                croak "Odd number of values for an M command " .
+                    scalar (@numbers) . " in '$path'";
+            }
 	    push @path_info, {
 		type => 'moveto',
 		name => 'moveto',
 		position => $position,
-		point => [@numbers],
+		point => [@numbers[0,1]],
 		svg_key => $curve_type,
 	    };
+	    # M can be followed by implicit line-to commands, so
+	    # consume these.
+	    if (@numbers > $expect_numbers) {
+	    	my @implicit_lineto = splice @numbers, $expect_numbers;
+		push @path_info, build_lineto ($position, @implicit_lineto);
+	    }
 	}
         else {
             croak "I don't know what to do with a curve type '$curve_type'";
         }
     }
+
     # Now sort it out if the user wants to get rid of the absolute
     # paths etc. 
     
@@ -473,6 +472,35 @@ sub extract_path_info
             $element->{svg_key} = uc $element->{svg_key};
             $previous = $element;
         }
+    }
+    return @path_info;
+}
+
+# Given a current position and an array of coordinates, use the
+# coordinates to build up line-to elements until the coordinates are
+# exhausted. Before entering this, it should have been checked that
+# there is an even number of coordinates.
+
+sub build_lineto
+{
+    my ($position, @coords) = @_;
+    my @path_info = ();
+    my $n_coords = scalar (@coords);
+    if ($n_coords % 2 != 0) {
+	# This trap should never be reached, since we should always
+	# check before entering this routine. However, we keep it for
+	# safety.
+	croak "Odd number of coordinates in lineto";
+    }
+    while (my ($x, $y) = splice @coords, 0, 2) {
+	push @path_info, {
+	    type => 'line-to',
+	    name => 'lineto',
+	    position => $position,
+	    point => [$x, $y],
+	    end => [$x, $y],
+	    svg_key => ($position eq 'absolute' ? 'L' : 'l'),
+	};
     }
     return @path_info;
 }
