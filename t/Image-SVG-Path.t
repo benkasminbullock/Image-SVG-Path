@@ -34,22 +34,28 @@ eval {
 };
 ok (! $@, "parse exponential");
 
-my $implicit = 'M 0,0 -1.733,-6.165';
+my $implicit = 'M 1,1 -2,-6';
 my @implicit_info;
 eval {
     @implicit_info = extract_path_info ($implicit);
 };
 ok (! $@, "parse implicit OK");
+my $implicit_info_keys = join '', map { $_->{svg_key} } @implicit_info;
+is ($implicit_info_keys, 'ML', '... only added one SVG element');
 is ($implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
-is ($implicit_info[1]{position}, "absolute");
+is ($implicit_info[1]{position}, "absolute", '... position absolute');
+is_deeply ($implicit_info[1]{point}, [-2, -6], '... implicit lineto point');
 my $lc_implicit = lc $implicit;
 my @lc_implicit_info;
 eval {
     @lc_implicit_info = extract_path_info ($lc_implicit);
 };
 ok (! $@, "parse implicit OK");
+my $lc_implicit_info_keys = join '', map { $_->{svg_key} } @lc_implicit_info;
+is ($lc_implicit_info_keys, 'ml', '... only added one SVG element');
 is ($lc_implicit_info[1]{type}, 'line-to', "Got lineto from implicit");
-is ($lc_implicit_info[1]{position}, "relative");
+is ($lc_implicit_info[1]{position}, "relative", "... position relative");
+is_deeply ($implicit_info[1]{point}, [-2, -6], 'implicit lineto point');
 
 my $arc = <<EOF;
 M600,350 l 50,-25 
@@ -99,8 +105,9 @@ is_deeply ($dblm_info[3]{end}, [200,130]);
 
 my $dblm2 = 'M 50 10 Q 0 70 50 130 M 200 10 200 20';
 @dblm_info = extract_path_info ($dblm2);
-diag explain @dblm_info;
 is ($dblm_info[2]{svg_key}, 'M', "Got second M in path");
+my $dblm_info_keys = join '', map { $_->{svg_key} } @dblm_info;
+is        ($dblm_info_keys, 'MQML', 'Checking inserted implict lineto sequence');
 is_deeply ($dblm_info[2]{point}, [200,10], "Got correct point value");
 is        ($dblm_info[3]{name},  'lineto', "Inserted implicit moveto");
 is_deeply ($dblm_info[3]{point}, [200,20], "... Got correct point value");
