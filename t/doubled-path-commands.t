@@ -1,7 +1,7 @@
 use warnings;
 use strict;
 use Test::More;
-use Test::Exception;
+#use Test::Exception;
 use Image::SVG::Path qw/extract_path_info/;
 
 ##Check to see that doubled, implicit commands work for all types
@@ -20,14 +20,18 @@ my @sets = (
 
 my @foo;
 while(my ($element, $arg_count, $comment) = splice @sets, 0, 3) {
-    ##Dynamically build a path string to parse, we don't care about the formatting so much as the contents
+    # Dynamically build a path string to parse, we don't care about
+    # the formatting so much as the contents
     my $command = 'M 1 2 ';
     $command .= join ' ', $element, (1..2*$arg_count);
     $command .= ' Z';
     diag $command;
-    my $lived = lives_ok { @foo = extract_path_info($command); } $comment;
+    eval {
+	@foo = extract_path_info ($command);
+    };
     SKIP: {
-        skip "$comment failed anyway", 1 unless $lived;
+	# Not sure why this skip is necessary.
+        skip "$comment failed anyway", 1 if $@;
         is @foo, 4, "Received 4 path elements for $comment";
     }
 }

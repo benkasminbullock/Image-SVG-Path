@@ -1,12 +1,8 @@
 Revision history for perl module Image::SVG::Path
 
-0.24 2016-08-09
+0.23 2016-08-10
 
-* Handle multiple Arc commands in sequence
-
-0.23 2016-07-27
-
-* Bump version number, fix bug in implicit line-tos
+* Handle implicit arc commands
 
 0.22 2016-07-26
 
