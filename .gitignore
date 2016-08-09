@@ -16,3 +16,5 @@ dists
 
 
 README
+MANIFEST
+lib/Image/SVG/Path.pod
