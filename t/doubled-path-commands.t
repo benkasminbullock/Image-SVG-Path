@@ -25,7 +25,7 @@ while(my ($element, $arg_count, $comment) = splice @sets, 0, 3) {
     my $command = 'M 1 2 ';
     $command .= join ' ', $element, (1..2*$arg_count);
     $command .= ' Z';
-    diag $command;
+#    diag $command;
     eval {
 	@foo = extract_path_info ($command);
     };
