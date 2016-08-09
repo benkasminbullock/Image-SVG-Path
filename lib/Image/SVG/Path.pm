@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.23';
+our $VERSION = '0.24';
 use Carp;
 
 # These are fields in the "arc" hash.
@@ -330,16 +330,20 @@ sub extract_path_info
         }
         elsif (uc $curve_type eq 'A') {
             my $position = position_type ($curve_type);
-	    if (@numbers != 7) {
+            my $expect_numbers = 7;
+	    if (@numbers % $expect_numbers != 0) {
 		croak "Need 7 parameters for arc";
 	    }
-	    my %arc;
-	    $arc{svg_key} = $curve_type;
-	    $arc{type} = 'arc';
-	    $arc{name} = 'elliptical arc';
-	    $arc{position} = $position;
-	    @arc{@arc_fields} = @numbers;
-	    push @path_info, \%arc;
+            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
+                my $o = $expect_numbers * $i;
+                my %arc;
+                $arc{svg_key} = $curve_type;
+                $arc{type} = 'arc';
+                $arc{name} = 'elliptical arc';
+                $arc{position} = $position;
+                @arc{@arc_fields} = @numbers[$o .. $o + 6];
+                push @path_info, \%arc;
+            }
         }
 	elsif (uc $curve_type eq 'M') {
 	    my $position = position_type ($curve_type);
