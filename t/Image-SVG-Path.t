@@ -127,7 +127,7 @@ v -5
 z
 EOPATH
 
-my @path_info = extract_path_info($zs_path, {absolute => 1, verbose => 1, });
+@path_info = extract_path_info($zs_path, {absolute => 1, verbose => 1, });
 is_deeply $path_info[5]->{point}, [20, 20], 'Relative moveto obeyed after closepath'; 
 
 
