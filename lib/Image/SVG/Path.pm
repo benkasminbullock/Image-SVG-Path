@@ -4,7 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our $VERSION = '0.23';
+our $VERSION = '0.24';
 use Carp;
 
 # These are fields in the "arc" hash.
@@ -394,8 +394,10 @@ sub extract_path_info
         if ($verbose) {
             print "Making all coordinates absolute.\n";
         }
-        my @abs_pos;
+        my @abs_pos = (0,0);
+        my @start_drawing;
         my $previous;
+        my $begin_drawing = 1;  ##This will get updated after
         for my $element (@path_info) {
             if ($element->{type} eq 'moveto') {
                 if ($element->{position} eq 'relative') {
@@ -407,6 +409,9 @@ sub extract_path_info
                         }
                         add_coords ($element->{point}, $ip);
                     }
+                    else {
+                        add_coords ($element->{point}, \@abs_pos);
+                    }
                 }
                 @abs_pos = @{$element->{point}};
             }
@@ -414,17 +419,38 @@ sub extract_path_info
                 if ($element->{position} eq 'relative') {
                     add_coords ($element->{point}, \@abs_pos);
                 }
+                if ($begin_drawing) {
+                        if ($verbose) {
+                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+                        }
+                        $begin_drawing = 0;
+                        @start_drawing = @abs_pos;
+                }
                 @abs_pos = @{$element->{point}};
             }
             elsif ($element->{type} eq 'horizontal-line-to') {
                 if ($element->{position} eq 'relative') {
 		    $element->{x} += $abs_pos[0];
                 }
+                if ($begin_drawing) {
+                        if ($verbose) {
+                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+                        }
+                        $begin_drawing = 0;
+                        @start_drawing = @abs_pos;
+                }
                 $abs_pos[0] = $element->{x};
             }
             elsif ($element->{type} eq 'vertical-line-to') {
                 if ($element->{position} eq 'relative') {
 		    $element->{y} += $abs_pos[1];
+                }
+                if ($begin_drawing) {
+                        if ($verbose) {
+                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+                        }
+                        $begin_drawing = 0;
+                        @start_drawing = @abs_pos;
                 }
                 $abs_pos[1] = $element->{y};
             }
@@ -433,6 +459,13 @@ sub extract_path_info
                     add_coords ($element->{control1}, \@abs_pos);
                     add_coords ($element->{control2}, \@abs_pos);
                     add_coords ($element->{end},      \@abs_pos);
+                }
+                if ($begin_drawing) {
+                        if ($verbose) {
+                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+                        }
+                        $begin_drawing = 0;
+                        @start_drawing = @abs_pos;
                 }
                 @abs_pos = @{$element->{end}};
             }
@@ -455,6 +488,13 @@ sub extract_path_info
                         2 * $abs_pos[1] - $previous->{control2}->[1],
                     ];
                 }
+                if ($begin_drawing) {
+                        if ($verbose) {
+                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+                        }
+                        $begin_drawing = 0;
+                        @start_drawing = @abs_pos;
+                }
                 @abs_pos = @{$element->{end}};
             }
 	    elsif ($element->{type} eq 'arc') {
@@ -466,9 +506,24 @@ sub extract_path_info
 		    $element->{x} += $abs_pos[0];
 		    $element->{y} += $abs_pos[1];
 		}
+                if ($begin_drawing) {
+                        if ($verbose) {
+                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+                        }
+                        $begin_drawing = 0;
+                        @start_drawing = @abs_pos;
+                }
                 @abs_pos = ($element->{x}, $element->{y});
 #		print "after: @abs_pos\n";
 	    }
+            elsif ($element->{type} eq 'closepath') {
+                ##Bookkeeping
+                if ($verbose) {
+                        printf "Closing drawing shape to [%.4f, %.4f]\n", @start_drawing;
+                }
+                @abs_pos = @start_drawing;
+                $begin_drawing = 1;
+            }
             $element->{position} = 'absolute';
 	    if (! $element->{svg_key}) {
 		die "No SVG key";
@@ -510,5 +565,3 @@ sub build_lineto
 }
 
 1;
-
-

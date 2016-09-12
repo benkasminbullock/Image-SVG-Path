@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.24 2016-09-12
+
+* Handle multiple closepath (z) commands in sequence
+
 0.23 2016-08-10
 
 * Handle implicit arc commands

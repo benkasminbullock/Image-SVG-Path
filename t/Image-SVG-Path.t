@@ -112,6 +112,25 @@ is_deeply ($dblm_info[2]{point}, [200,10], "Got correct point value");
 is        ($dblm_info[3]{name},  'lineto', "Inserted implicit moveto");
 is_deeply ($dblm_info[3]{point}, [200,20], "... Got correct point value");
 
+# Handle more than one closepath
+
+my $zs_path = <<EOPATH;
+M 10,10
+v 5
+h 5
+v -5
+z
+m 10,10
+v 5
+h 5
+v -5
+z
+EOPATH
+
+@path_info = extract_path_info($zs_path, {absolute => 1, verbose => 1, });
+is_deeply $path_info[5]->{point}, [20, 20], 'Relative moveto obeyed after closepath'; 
+
+
 my $churchpath = 'M134,25v20h22v15h-22v30l90,63v3h-12v53h-38v-53l-49,-35l-49,35v53h-38v-53h-12v-3l90,-63v-30h-22v-15h22v-20zM103,207v-35a23,20 0 0,1 44,0 v35z';
 my @churchinfo;
 {
