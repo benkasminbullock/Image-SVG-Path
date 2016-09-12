@@ -55,37 +55,19 @@ Turn the SVG path string into a series of simpler things. For example,
 [% example ("extract-path-info") %]
 
 The return value is a list of hash references. Each hash reference has
-at least three keys, C<type>, C<position>, and C<svg_key>. The C<type>
-field says what type of thing it is, for example a cubic bezier curve
-or a line. The C<position> value is either "relative" or "absolute"
-depending on whether the coordinates of this step of the path are
-relative to the current point (relative) or to the drawing's origin
-(absolute). The C<svg_key> field is the original key from the
-path. C<position> is relative if this key is lower case and absolute
-if this key is upper case.
+at least four keys, C<type>, C<position>, C<name>, and C<svg_key>. The
+C<svg_key> field is the original key from the path. The C<type> and
+C<name> fields say what the element is, for example a cubic bezier
+curve or a line. The C<position> value is either "relative" or
+"absolute" depending on whether the coordinates of this step of the
+path are relative to the current point (relative) or to the drawing's
+origin (absolute). C<position> is relative if C<svg_key> is lower case
+and absolute if it is upper case, unless the user chooses the
+L</absolute> option.
 
-If C<type> is C<moveto>, the hash reference contains one more field,
-C<point>, which is the point to move to. This is an array reference
-containing the I<x> and I<y> coordinates as elements indexed 0 and 1
-respectively.
-
-If the type is C<cubic-bezier>, the hash reference contains three more
-fields, C<control1>, C<control2> and C<end>. The value of each is an
-array reference containing the I<x> and I<y> coordinates of the first
-and second control points and the end point of the Bezier curve
-respectively. (The start point of the curve is the end point of the
-previous part of the path.)
-
-If the type is C<shortcut-cubic-bezier>, the hash contains two more
-fields, C<control2> and C<end>. C<control2> is the second control
-point, and C<end> is the end point. The first control point is got by
-reflecting the second control point of the previous curve around the
-end point of the previous curve (the start point of the current
-curve). 
-
-There is also an option L</no_shortcuts> which automatically replaces
-shortcut cubic bezier curves with the normal kind, by calculating the
-first control point.
+An option L</no_shortcuts> automatically replaces shortcut cubic
+bezier curves with the normal kind, by calculating the first control
+point.
 
 A second argument to C<extract_path_info> contains options for the
 extraction in the form of a hash reference. For example,
@@ -100,14 +82,17 @@ The following may be chosen by adding them to the hash reference:
 
 If the hash element C<absolute> is set to a true value, relative
 positions are changed to absolute. For example a "c" curve is changed
-to the equivalent "C" curve.
+to the equivalent "C" curve. In this case, the C<position> value of
+each element's hash is C<absolute>, and C<svg_key> is converted to
+upper case.
 
 =item no_shortcuts
 
 If the hash element C<no_shortcuts> is set to a true value then
-shortcuts ("S" curves) are changed into the equivalent "C" curves. A
-deficiency of this is that it only works in combination with the
-"absolute" option, otherwise it does nothing.
+shortcut cubic bezier curves. ("S" curves) are changed into the
+equivalent "C" curves. This only works in combination with the
+"absolute" option, otherwise it does nothing. It also does not work
+with shortcut quadratic bezier curves.
 
 =item verbose
 
@@ -149,7 +134,12 @@ then the elements of C<@path> are each hash references which contain
 one of the following kinds of elements, depending on what is next on
 the path. 
 
-=head2 Move to elements
+=head2 Move to elements, M
+
+If C<type> is C<moveto>, the hash reference contains one more field,
+C<point>, which is the point to move to. This is an array reference
+containing the I<x> and I<y> coordinates as elements indexed 0 and 1
+respectively.
 
 =over
 
@@ -167,7 +157,12 @@ This is the point to move to.
 
 =back
 
-=head2 Line elements
+=head2 Line elements, L
+
+If C<type> is C<lineto>, the hash reference contains one more field,
+C<point>, which is the point to move to. This is an array reference
+containing the I<x> and I<y> coordinates as elements indexed 0 and 1
+respectively.
 
 =over
 
@@ -190,7 +185,14 @@ pre-0.16 versions of the module.
 
 =back
 
-=head2 Cubic bezier curve elements
+=head2 Cubic bezier curve elements, C
+
+If the type is C<cubic-bezier>, the hash reference contains three more
+fields, C<control1>, C<control2> and C<end>. The value of each is an
+array reference containing the I<x> and I<y> coordinates of the first
+and second control points and the end point of the Bezier curve
+respectively. (The start point of the curve is the end point of the
+previous part of the path.)
 
 =over
 
@@ -216,7 +218,14 @@ The end point of the curve.
 
 =back
 
-=head2 Shortcut cubic bezier curve elements
+=head2 Shortcut cubic bezier curve elements, S
+
+If the type is C<shortcut-cubic-bezier>, the hash contains two more
+fields, C<control2> and C<end>. C<control2> is the second control
+point, and C<end> is the end point. The first control point is got by
+reflecting the second control point of the previous curve around the
+end point of the previous curve (the start point of the current
+curve). 
 
 Use the L</no_shortcuts> option to automatically convert these into
 cubic bezier curve elements.
@@ -241,7 +250,11 @@ This is the end point of the curve.
 
 =back
 
-=head2 Quadratic bezier curve elements
+=head2 Quadratic bezier curve elements, Q
+
+If the type is C<quadratic-bezier>, the hash contains two more fields,
+C<control> and C<end>. C<control> is the control point, and
+C<end> is the end point.
 
 =over
 
@@ -263,10 +276,10 @@ This is the end point.
 
 =back
 
-=head2 Shortcut quadratic Bezier curves
+=head2 Shortcut quadratic Bezier curves, T
 
-Use the L</no_shortcuts> option to automatically convert these into
-quadratic bezier curves.
+See L<the SVG documentation|/SVG specification> (section 8.3.7) for
+how to calculate the control point.
 
 =over
 
@@ -284,7 +297,7 @@ This is the end point.
 
 =back
 
-=head2 Arc elements
+=head2 Arc elements, A
 
 =over
 
@@ -292,21 +305,25 @@ This is the end point.
 
 This is C<arc>.
 
+=item svg_key
+
+This is C<A> or C<a>.
+
 =item rx, ry
 
 X and Y radiuses
 
 =item x_axis_rotation
 
-See L<the SVG documentation|/SVG specification> for details.
+See L<the SVG documentation|/SVG specification> (section 8.3.8) for details.
 
 =item large_arc_flag
 
-See L<the SVG documentation|/SVG specification> for details.
+See L<the SVG documentation|/SVG specification> (section 8.3.8) for details.
 
 =item sweep_flag
 
-See L<the SVG documentation|/SVG specification> for details.
+See L<the SVG documentation|/SVG specification> (section 8.3.8) for details.
 
 =item x, y
 
@@ -316,7 +333,11 @@ These are the end points of the arc.
 
 Arcs are omitted from L</SVG Tiny>.
 
-=head2 Horizontal line elements
+=head2 Horizontal line elements, H
+
+Horizontal line elements contain one additional key, C<x>, the
+x-coordinate of the end of the line. The y-coordinate is the same as
+the y-coordinate of the end point of the previous element.
 
 =over
 
@@ -334,7 +355,11 @@ This is the x coordinate of the end point. The y coordinate is implicit.
 
 =back
 
-=head2 Vertical line elements
+=head2 Vertical line elements, V
+
+Vertical line elements contain one additional key, C<y>, the
+y-coordinate of the end of the line. The x-coordinate is the same as
+the x-coordinate of the end point of the previous element.
 
 =over
 
@@ -352,7 +377,7 @@ This is the y coordinate of the end point. The x coordinate is implicit.
 
 =back
 
-=head2 Closepath elements
+=head2 Closepath elements, Z
 
 =over
 
@@ -369,8 +394,7 @@ This is Z or z.
 Each hash reference also contains the field C<position>, which has
 either the value C<absolute> or C<relative> depending on whether
 C<svg_key> is upper case or lower case, respectively. A field C<name>
-also exists. However, these fields and C<type> are rather useless. See
-L</Some of the path element data is redundant>.
+also exists.
 
 =head1 BUGS
 
@@ -379,16 +403,14 @@ L</Some of the path element data is redundant>.
 =item Does not use the grammar
 
 There is a grammar for the paths in the W3 specification. See
-L<http://www.w3.org/TR/SVG/paths.html#PathDataBNF>. However, this
+L<https://www.w3.org/TR/SVG/paths.html#PathDataBNF>. However, this
 module does not use that grammar. Instead it hacks up the path using
 regexes.
 
-=item Some of the path element data is redundant
+=item L</no_shortcuts> does not work with quadratic bezier curves
 
-Some of the data fields of the hash elements shown under L</SVG path
-elements> are redundant. A future major re-version of the module may
-remove some of these. I suggest using the C<svg_key> field rather than
-the C<name>, C<type> and C<position> fields.
+Currently the L</no_shortcuts> option does not work with quadratic
+bezier curves.
 
 =back
 
@@ -439,9 +461,9 @@ Render SVG via a Gnome library.
 
 =item SVG specification
 
-L<The full specification|http://www.w3.org/TR/SVG/> contains all the
+L<The full specification|https://www.w3.org/TR/SVG/> contains all the
 details. The L<SVG path
-specification|http://www.w3.org/TR/SVG/paths.html> contains the
+specification|https://www.w3.org/TR/SVG/paths.html> contains the
 specifications for paths.
 
 =item SVG Tiny

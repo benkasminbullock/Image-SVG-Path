@@ -8,7 +8,7 @@ my $count = 0;
 for my $element (@path_info) {                
     $count++;                                 
     print "Element $count:\n";                
-    for my $k (keys %$element) {              
+    for my $k (sort keys %$element) {              
 	my $val = $element->{$k};             
 	if (ref $val eq 'ARRAY') {            
 	    $val = "[$val->[0], $val->[1]]";  
