@@ -4,6 +4,7 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
+our %EXPORT_TAGS = (all => \@EXPORT_OK);
 our $VERSION = '0.24';
 use Carp;
 

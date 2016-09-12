@@ -10,3 +10,5 @@ dists
 # Author tests, find on github.
 xt/.*
 ^lib/Image/SVG/Path\.pod\.tmpl$
+# Outputs of the examples
+^examples/.*-out\.txt$
