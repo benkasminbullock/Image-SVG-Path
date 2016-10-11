@@ -5,7 +5,7 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
-our $VERSION = '0.24';
+our $VERSION = '0.25';
 use Carp;
 
 # These are fields in the "arc" hash.
@@ -117,7 +117,7 @@ sub create_path_string
 }
 
 # The following regular expression splits the path into pieces
-# Note we only split on '-' when it's not preceeded by 'e'
+# Note we only split on '-' or '+' when not preceeded by 'e'
 
 my $split_re = qr/
 		     (?:
@@ -125,13 +125,16 @@ my $split_re = qr/
 		     |
 			 (?<!e)(?=-)
 		     |
+			 (?<!e)(?:\+)
+		     |
 			 \s+
 		     )
 		 /x;
 
 # Match a number
 
-my $number_re = qr/[-0-9.e]+/i;
+my $number_re = qr/[\+\-0-9.e]+/i;
+
 
 my $numbers_re = qr/(?:$number_re|(?:\s|,)+)*/;
 
