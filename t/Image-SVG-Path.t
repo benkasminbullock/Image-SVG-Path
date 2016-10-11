@@ -1,6 +1,5 @@
 use warnings;
 use strict;
-use blib;
 use Test::More;
 use Image::SVG::Path qw/extract_path_info create_path_string/;
 
