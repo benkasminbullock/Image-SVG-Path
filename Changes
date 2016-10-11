@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.26 2016-10-10
+
+* Handle + signs in exponentials, and as a number separator
+
 0.25 2016-09-08
 
 * Handle multiple closepath (z) commands in sequence
