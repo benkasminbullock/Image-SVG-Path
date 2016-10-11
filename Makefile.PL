@@ -19,6 +19,9 @@ WriteMakefile (
             repository => $repo,
             bugtracker => "$repo/issues",
         },
+	x_contributors => [
+	    'Colin Kuskie <ckuskie@cpan.org',
+	],
     },
     MIN_PERL_VERSION => '5.006001',
 );
