@@ -1,7 +1,6 @@
 use warnings;
 use strict;
 use utf8;
-use FindBin '$Bin';
 use Test::More;
 my $builder = Test::More->builder;
 binmode $builder->output,         ":utf8";
@@ -12,10 +11,9 @@ binmode STDERR, ":encoding(utf8)";
 use warnings;
 use strict;
 use Test::More;
-#use Test::Exception;
 use Image::SVG::Path qw/extract_path_info/;
 
-##Test these different syntaxes to check for path parsing
+# Test these different syntaxes to check for path parsing
 
 my @strings = (
     'M150 0 L75 200 L225 200 Z',       'Condensed',
@@ -31,13 +29,13 @@ my @strings = (
     'M 150 0, L 75 200, 225 200, Z',   'Commas and whitespace between pairs and commands',
 );
 
-while(my ($string,$comment) = splice @strings, 0, 2) {
+while (my ($string, $comment) = splice @strings, 0, 2) {
     eval {
-	my @foo = extract_path_info($string);
+	my @foo = extract_path_info ($string);
     };
     if ($@) {
-    note ($@);
-}
+	note ($@);
+    }
     ok (! $@);
 }
 

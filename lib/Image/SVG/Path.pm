@@ -3,12 +3,26 @@ use warnings;
 use strict;
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw/extract_path_info reverse_path create_path_string/;
-our %EXPORT_TAGS = (all => \@EXPORT_OK);
-our $VERSION = '0.26';
+our @SVG_REGEX = qw/
+		       $sign
+		       $wsp
+		       $comma_wsp
+		       $digit_sequence
+		       $integer_constant
+		       $fractional_constant
+		       $exponent
+		       $floating_point_constant
+		       $number
+		   /;
+our @FUNCTIONS = qw/extract_path_info reverse_path create_path_string/;
+our @EXPORT_OK = (@FUNCTIONS, @SVG_REGEX);
+our %EXPORT_TAGS = (all => \@FUNCTIONS, regex => \@SVG_REGEX);
+our $VERSION = '0.27';
+
 use Carp;
 
-# These are fields in the "arc" hash.
+# These are the fields in the "arc" hash which is returned when an "A"
+# command is processed.
 
 my @arc_fields = qw/rx ry x_axis_rotation large_arc_flag sweep_flag x y/;
 
@@ -116,31 +130,108 @@ sub create_path_string
     return $path;
 }
 
-# The following regular expression splits the path into pieces
-# Note we only split on '-' or '+' when not preceeded by 'e'
+# Match the e or E in an exponent.
+
+my $e = qr/[eE]/;
+
+# These regular expressions are directly taken from the SVG grammar,
+# https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+
+our $sign = qr/\+|\-/;
+
+our $wsp = qr/[\x20\x09\x0D\x0A]/;
+
+our $comma_wsp = qr/(?:$wsp+,?$wsp*|,$wsp*)/;
+
+# The following regular expression splits the path into pieces Note we
+# only split on '-' or '+' when not preceeded by 'e'.  This regular
+# expression is not following the SVG grammar, it is going our own
+# way.
 
 my $split_re = qr/
 		     (?:
-			 \s*,\s*
+			 $wsp*,$wsp*
 		     |
-			 (?<!e)(?=-)
+			 (?<!$e)(?=-)
 		     |
-			 (?<!e)(?:\+)
+			 (?<!$e)(?:\+)
 		     |
-			 \s+
+			 $wsp+
 		     )
 		 /x;
 
 # Match a number
 
-my $number_re = qr/[\+\-0-9.e]+/i;
+# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+
+# $ds is "digit sequence", and it accounts for all the uses of "digit"
+# in the SVG path grammar, so there is no "digit" here.
 
 
-my $numbers_re = qr/(?:$number_re|(?:\s|,)+)*/;
+my $ds = qr/[0-9]+/;
+our $digit_sequence = $ds;
+
+# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+
+# Aside to whoever wrote the SVG standards: this is not an integer,
+# it's a whole number!
+
+our $integer_constant = qr/$ds/;
+
+# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+
+our $fractional_constant = qr/$ds? \. $ds/x;
+
+# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+
+our $exponent = qr/
+		     $e
+		     $sign?
+		     $ds
+		 /x;
+
+# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+
+our $floating_point_constant = qr/
+				    $fractional_constant 
+				    $exponent?
+				|
+				    $ds
+				    $exponent
+				/x;
+
+# This is unused.
+# my $nonnegative_number = qr/
+# 			       $integer_constant
+# 			   |
+# 			       $floating_point_constant
+# 			   /x;
+
+# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+
+# $floating_point_constant needs to go before $integer_constant,
+# otherwise it matches the shorter $integer_constant every time.
+
+our $number = qr/
+		    $sign?
+		    $floating_point_constant
+		|
+		    $sign?
+		    $integer_constant
+		/x;
+
+# Old regex.
+
+#my $number_re = qr/(?:[\+\-0-9.]|$e)+/i;
+
+# This is where we depart from the SVG grammar and go our own way.
+
+my $numbers_re = qr/(?:$number|$comma_wsp+)*/;
 
 sub extract_path_info
 {
     my ($path, $options_ref) = @_;
+    # Error/message reporting thing. Not sure why I did this now.
     my $me = 'extract_path_info';
     if (! $path) {
         croak "$me: no input";
@@ -164,7 +255,7 @@ sub extract_path_info
         print "$me: I am trying to split up '$path'.\n";
     }
     my @path_info;
-    my $has_moveto = ($path =~ /^\s*([Mm])\s*($numbers_re)(.*)$/s);
+    my $has_moveto = ($path =~ /^$wsp*([Mm])$wsp*($numbers_re)(.*)$/s);
     if (! $has_moveto) {
         croak "No moveto at start of path '$path'";
     }
@@ -176,7 +267,7 @@ sub extract_path_info
     my $position = position_type ($moveto_type);
     my @coords = split $split_re, $move_to;
     if (@coords < 2) {
-	croak "Not enough numerical values for the initial M command in '$path'";
+	croak "$me: Not enough numerical values for the initial M command in '$path'";
     }
     push @path_info, {
         type => 'moveto',
@@ -189,7 +280,7 @@ sub extract_path_info
     if (@coords > 2) {
 	# Check the number of coordinates is valid.
 	if (@coords % 2 != 0) {
-	    croak "Odd number of values for an implicit L command " .
+	    croak "$me: Odd number of values for an implicit L command " .
 	    scalar (@coords) . " in '$path'";
 	}
 	if ($verbose) {
@@ -202,20 +293,22 @@ sub extract_path_info
     }
     # Deal with the rest of the path.
     my @curves;
-    while ($curves =~ /\G([cslqtahvzm])\s*($numbers_re)/gi) {
+    while ($curves =~ /\G([cslqtahvzm])$wsp*($numbers_re)/gi) {
         push @curves, [$1, $2];
     }
     for my $curve_data (@curves) {
         my ($curve_type, $curve) = @$curve_data;
         $curve =~ s/^,//;
+#	print "$curve\n";
         my @numbers = split $split_re, $curve;
+#	print "@numbers\n";
         if ($verbose) {
-            print "Extracted numbers: @numbers\n";
+            print "$me: Extracted numbers: @numbers\n";
         }
         if (uc $curve_type eq 'C') {
             my $expect_numbers = 6;
             if (@numbers % 6 != 0) {
-                croak "Wrong number of values for a C curve " .
+                croak "$me: Wrong number of values for a C curve " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($curve_type);
@@ -240,7 +333,7 @@ sub extract_path_info
         elsif (uc $curve_type eq 'S') {
             my $expect_numbers = 4;
             if (@numbers % $expect_numbers != 0) {
-                croak "Wrong number of values for an S curve " .
+                croak "$me: Wrong number of values for an S curve " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($curve_type);
@@ -304,7 +397,7 @@ sub extract_path_info
         elsif (uc $curve_type eq 'T') {
             my $expect_numbers = 2;
             if (@numbers % $expect_numbers != 0) {
-                croak "Wrong number of values for an T command " .
+                croak "$me: Wrong number of values for an T command " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($curve_type);
@@ -347,7 +440,7 @@ sub extract_path_info
             my $position = position_type ($curve_type);
             my $expect_numbers = 7;
 	    if (@numbers % $expect_numbers != 0) {
-		croak "Need 7 parameters for arc";
+		croak "$me: Need 7 parameters for arc";
 	    }
             for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
                 my $o = $expect_numbers * $i;
@@ -364,10 +457,10 @@ sub extract_path_info
             my $expect_numbers = 2;
 	    my $position = position_type ($curve_type);
 	    if (@numbers < $expect_numbers) {
-		croak "Need at least $expect_numbers numbers for move to";
+		croak "$me: Need at least $expect_numbers numbers for move to";
 	    }
             if (@numbers % $expect_numbers != 0) {
-                croak "Odd number of values for an M command " .
+                croak "$me: Odd number of values for an M command " .
                     scalar (@numbers) . " in '$path'";
             }
 	    push @path_info, {
@@ -409,7 +502,7 @@ sub extract_path_info
                     if ($ip) {
                         if (ref $ip ne 'ARRAY' ||
                             scalar @$ip != 2) {
-                            croak "The initial position supplied doesn't look like a pair of coordinates";
+                            croak "$me: The initial position supplied doesn't look like a pair of coordinates";
                         }
                         add_coords ($element->{point}, $ip);
                     }

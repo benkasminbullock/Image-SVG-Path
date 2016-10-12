@@ -400,12 +400,16 @@ also exists.
 
 =over
 
-=item Does not use the grammar
+=item Mostly does not use the grammar
 
 There is a grammar for the paths in the W3 specification. See
-L<https://www.w3.org/TR/SVG/paths.html#PathDataBNF>. However, this
-module does not use that grammar. Instead it hacks up the path using
-regexes.
+L<https://www.w3.org/TR/SVG/paths.html#PathDataBNF>. Up to version
+0.27, this module did not use that grammar. From version 0.27 the
+module is gradually being converted to use the SVG grammar, starting
+with whitespace and number parsing. I made this change to doing things
+"the right way" because so many minor errors were found (mostly by
+Colin Kuskie, <COLINK>). In the course of doing this, yet more minor
+errors were discovered.
 
 =item L</no_shortcuts> does not work with quadratic bezier curves
 
@@ -420,8 +424,18 @@ None of the functions is exported by default.
 
      use Image::SVG::Path ':all';
 
-exports all of L</extract_path_info>, L</reverse_path> and
-L</create_path_string>.
+exports all of the module's functions, L</extract_path_info>,
+L</reverse_path> and L</create_path_string>. For backward
+compatibility, this does not export the regular expressions.
+
+The SVG-parsing regular expressions which correspond to the SVG
+standard can also be exported. Please refer to the source code of the
+module for a list. To export these, use
+
+    use Image::SVG::Path ':regex';
+
+As of version 0.27, not all of the SVG standard grammar is implemented
+yet.
 
 =head1 SEE ALSO
 
@@ -464,7 +478,11 @@ Render SVG via a Gnome library.
 L<The full specification|https://www.w3.org/TR/SVG/> contains all the
 details. The L<SVG path
 specification|https://www.w3.org/TR/SVG/paths.html> contains the
-specifications for paths.
+specifications for paths. The grammar of paths is described in L<The
+grammar for path
+data|https://www.w3.org/TR/SVG/paths.html#PathDataBNF> within that
+section of the document. See also L</Mostly does not use the grammar>
+under L</BUGS>.
 
 =item SVG Tiny
 
