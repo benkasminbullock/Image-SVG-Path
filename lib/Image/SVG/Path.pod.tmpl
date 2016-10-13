@@ -50,7 +50,9 @@ parser for that condensed format.
 
     my @path_info = extract_path_info ($path_d_attribute);
 
-Turn the SVG path string into a series of simpler things. For example,
+Turn the SVG path string into a series of simpler things.
+
+For example,
 
 [% example ("extract-path-info") %]
 
@@ -65,16 +67,21 @@ origin (absolute). C<position> is relative if C<svg_key> is lower case
 and absolute if it is upper case, unless the user chooses the
 L</absolute> option.
 
-An option L</no_shortcuts> automatically replaces shortcut cubic
-bezier curves with the normal kind, by calculating the first control
-point.
+C<extract_path_info> replaces all implicit commands with the explicit
+version. For example, a moveto followed by an implicit lineto of the
+form C<M 1 2 3 4> is converted into a moveto C<M 1 2> followed by an
+explicit lineto C<L 3 4>, and a sequence of elliptic arcs, one
+explicit and one implicit, is turned into two elliptic arcs in the
+output. This means that it is not possible to use the output of this
+function to reconstruct the input path string exactly, although the
+actual path itself can be reproduced exactly.
 
 A second argument to C<extract_path_info> contains options for the
 extraction in the form of a hash reference. For example,
 
     my @path_info = extract_path_info ($path, {absolute => 1});
 
-The following may be chosen by adding them to the hash reference:
+The following options exist:
 
 =over
 
@@ -89,10 +96,10 @@ upper case.
 =item no_shortcuts
 
 If the hash element C<no_shortcuts> is set to a true value then
-shortcut cubic bezier curves. ("S" curves) are changed into the
-equivalent "C" curves. This only works in combination with the
+shortcut (smooth) cubic bezier curves. ("S" curves) are changed into
+the equivalent "C" curves. This only works in combination with the
 "absolute" option, otherwise it does nothing. It also does not work
-with shortcut quadratic bezier curves.
+with shortcut (smooth) quadratic bezier curves.
 
 =item verbose
 
@@ -400,6 +407,11 @@ also exists.
 
 =over
 
+=item B<shortcut> should be B<smooth>
+
+This document and the module both make the error of calling "smooth"
+"shortcut".
+
 =item L</no_shortcuts> does not work with quadratic bezier curves
 
 The L</no_shortcuts> option does not work with quadratic bezier
@@ -440,7 +452,8 @@ Match a sequence of one or more drawing commands.
 
 =item $moveto
 
-Match a move-to command, including any subsequent implicit line-tos.
+Match a move-to command, including any subsequent implicit
+line-tos. See L</Move to elements, M>.
 
 =item $closepath
 
@@ -462,16 +475,19 @@ Match a move-to command, including any subsequent implicit line-tos.
 
 Of necessity, underscores (C<_>) have been substituted for the hyphens
 (C<->) in the SVG standard, but otherwise these names correspond
-exactly to the names in the standard.
+exactly to the names in the standard. In each of the drawing commands,
+the command itself is captured as $1 and the arguments are captured as
+$2.
 
 To export all of these, use
 
     use Image::SVG::Path ':regex';
 
-The subexpressions used in the definitions of the above (things like
-C<vertical-lineto-argument-sequence>) are not exported, and some of
-the more ridiculous ones (long-winded duplicates of other expressions)
-are not even implemented in this module's source code.
+The subexpressions used in the definitions of the above in the SVG
+standard (things like C<vertical-lineto-argument-sequence>) are not
+exported, and some of the more ridiculous ones (long-winded duplicates
+of other expressions) are not even implemented in this module's source
+code.
 
 =head1 SEE ALSO
 
@@ -487,7 +503,8 @@ and is used to draw with L<Cairo>.
 
 =item L<MarpaX::Languages::SVG::Parser>
 
-This parser uses the SVG grammar mentioned in L</BUGS>.
+This is a parser for SVG by Ron Savage which uses Jeffrey Kegler's
+L<Marpa::R2> system, hence the name "MarpaX" (Marpa extension).
 
 =item L<SVG::Estimate>
 
@@ -503,6 +520,10 @@ which renders some kinds of SVGs using L<Cairo>.
 
 Render SVG via a Gnome library.
 
+=item L<Image::SVG::Transform>
+
+This module reads the "transform" attribute of an SVG element.
+
 =back
 
 =head2 SVG standards
@@ -517,8 +538,7 @@ specification|https://www.w3.org/TR/SVG/paths.html> contains the
 specifications for paths. The grammar of paths is described in L<The
 grammar for path
 data|https://www.w3.org/TR/SVG/paths.html#PathDataBNF> within that
-section of the document. See also L</Mostly does not use the grammar>
-under L</BUGS>.
+section of the document.
 
 =item SVG Tiny
 
@@ -534,7 +554,33 @@ either this or SVG Tiny are in use.
 
 =back
 
+=head2 Other things
+
+=over
+
+=item CairoSVG
+
+L<CairoSVG|http://cairosvg.org/> is a Python SVG renderer using Cairo.
+
+=back
+
+=head1 HISTORY
+
+This module was originally begun as a way to hack the data out of the
+SVG-like data of a project called L<KanjiVG (kanji vector
+graphics)|http://kanjivg.tagaini.net/> for the benefit of L<this kanji
+recognition system|http://kanji.sljfaq.org> which relies on the
+KanjiVG data. At the time I (Ben Bullock) created this, I only had a
+vague idea of what SVG was. The KanjiVG data consists only of a subset
+of SVG, namely the initial move-tos and cubic bezier curves, which is
+why some parts of this module (L</reverse_path> and
+L</create_path_string>) only deal with that kind of SVG path.
+
 =head1 ACKNOWLEDGEMENTS
+
+Alessandro Ranellucci (L<http://makerblog.it/>) pointed out that
+implicit commands and floating point numbers were not handled
+correctly.
 
 Colin Kuskie (L<http://www.thegamecrafter.com/>) fixed error messages
 for version 0.20, number paths for version 0.21, implicit line-tos for

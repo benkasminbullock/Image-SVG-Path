@@ -20,6 +20,7 @@ WriteMakefile (
             bugtracker => "$repo/issues",
         },
 	x_contributors => [
+	    'Alessandro Ranellucci <aar@cpan.org>',
 	    'Colin Kuskie <colink@cpan.org>',
 	],
     },
