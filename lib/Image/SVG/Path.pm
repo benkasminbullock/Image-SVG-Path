@@ -4,20 +4,24 @@ use strict;
 require Exporter;
 our @ISA = qw(Exporter);
 our @SVG_REGEX = qw/
-		       $sign
-		       $wsp
-		       $comma_wsp
-		       $digit_sequence
-		       $integer_constant
-		       $fractional_constant
-		       $exponent
-		       $floating_point_constant
-		       $number
+		       $closepath
+		       $curveto
+		       $drawto_command
+		       $drawto_commands
+		       $elliptical_arc
+		       $horizontal_lineto
+		       $lineto
+		       $moveto
+		       $quadratic_bezier_curveto
+		       $smooth_quadratic_bezier_curveto
+		       $svg_path
+		       $vertical_lineto
 		   /;
+
 our @FUNCTIONS = qw/extract_path_info reverse_path create_path_string/;
 our @EXPORT_OK = (@FUNCTIONS, @SVG_REGEX);
 our %EXPORT_TAGS = (all => \@FUNCTIONS, regex => \@SVG_REGEX);
-our $VERSION = '0.27';
+our $VERSION = '0.28';
 
 use Carp;
 
@@ -200,12 +204,6 @@ our $floating_point_constant = qr/
 				    $exponent
 				/x;
 
-# This is unused.
-# my $nonnegative_number = qr/
-# 			       $integer_constant
-# 			   |
-# 			       $floating_point_constant
-# 			   /x;
 
 # From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
 
@@ -219,6 +217,131 @@ our $number = qr/
 		    $sign?
 		    $integer_constant
 		/x;
+
+my $pair = qr/$number $comma_wsp? $number/x;
+
+my $pairs = qr/(?:$pair $wsp)* $pair/x;
+
+my $numbers = qr/(?:$number $wsp)* $number/x;
+
+# Quadratic bezier curve
+
+my $qarg = qr/$pair $comma_wsp? $pair/x;
+
+our $quadratic_bezier_curveto = qr/
+				      ([Qq])
+				      $wsp*
+				      (
+					  (?:$qarg $comma_wsp?)*
+					  $qarg
+				      )
+				  /x;
+
+our $smooth_quadratic_bezier_curveto =
+qr/([Tt]) $wsp* ((?:$pair $comma_wsp?)* $pair)/x;
+
+# Cubic bezier curve
+
+my $sarg = qr/$pair $comma_wsp $pair/x;
+
+our $smooth_curveto = qr/([Ss]) $wsp* ((?:$sarg $comma_wsp)* $sarg)/x;
+
+my $carg = qr/(?:$pair $comma_wsp?){2} $pair/x;
+
+our $curveto = qr/
+		     ([Cc]) 
+		     $wsp*
+		     (
+			 (?:$carg $comma_wsp)*
+			 $carg
+		     )
+		 /x;
+
+# Elliptical arc-related
+
+our $nonnegative_number = qr/
+ 			       $integer_constant
+ 			   |
+ 			       $floating_point_constant
+ 			   /x;
+
+my $nnn = $nonnegative_number;
+
+our $flag = qr/[01]/;
+
+my $eaa = qr/
+		$nnn
+		$comma_wsp?
+		$nnn
+		$comma_wsp?
+		$number
+		$comma_wsp
+		$flag
+		$comma_wsp?
+		$flag
+		$comma_wsp?
+		$pair
+	    /x;
+
+our $elliptical_arc = qr/([Aa]) $wsp* ((?:$eaa $comma_wsp?)* $eaa)/x;
+
+our $vertical_lineto = qr/([Vv]) $wsp* ($numbers)/x;
+
+our $horizontal_lineto = qr/([Hh]) $wsp* ($numbers)/x;
+
+our $lineto = qr/([Ll]) $wsp* ($pairs)/x;
+
+our $closepath = qr/([Zz])/;
+
+our $moveto_argument_sequence = $pairs;
+
+our $moveto = qr/
+		    ([Mm]) $wsp* ($pairs)
+		/x;
+
+our $drawto_command = qr/
+			    (
+				$closepath
+			    |
+				$lineto
+			    |
+				$horizontal_lineto
+			    |
+				$vertical_lineto
+			    |
+				$curveto
+			    |
+				$smooth_curveto
+			    |
+				$quadratic_bezier_curveto
+			    |
+				$smooth_quadratic_bezier_curveto
+			    |
+				$elliptical_arc
+			    )
+			/x;
+
+our $drawto_commands = qr/
+			     (?:$drawto_command $wsp)*
+			     $drawto_command
+			 /x;
+my $mdc_group = qr/
+		      $moveto
+		      $wsp*
+		      $drawto_commands
+		  /x;
+
+my $mdc_groups = qr/
+		       $mdc_group+
+		   /x;
+
+our $moveto_drawto_command_groups = $mdc_groups;
+
+our $svg_path = qr/
+		      $wsp*
+		      $mdc_groups?
+		      $wsp*
+		  /x;
 
 # Old regex.
 
@@ -235,6 +358,9 @@ sub extract_path_info
     my $me = 'extract_path_info';
     if (! $path) {
         croak "$me: no input";
+    }
+    if ($path !~ $svg_path) {
+	croak "$me: ungrammatical path '$path'";
     }
     # Create an empty options so that we don't have to
     # keep testing whether the "options" string is defined or not
@@ -293,8 +419,14 @@ sub extract_path_info
     }
     # Deal with the rest of the path.
     my @curves;
-    while ($curves =~ /\G([cslqtahvzm])$wsp*($numbers_re)/gi) {
-        push @curves, [$1, $2];
+    while ($curves =~ /\G(([cslqtahvzm])$wsp*($numbers_re))/gi) {
+	my $original = $1;
+	my $command = $2;
+	my $values = $3;
+	if ($original !~ /$moveto|$drawto_command/x) {
+	    warn "Cannot parse '$original' using moveto/drawto_command regex";
+	}
+        push @curves, [$command, $values, $original];
     }
     for my $curve_data (@curves) {
         my ($curve_type, $curve) = @$curve_data;
@@ -491,7 +623,7 @@ sub extract_path_info
         if ($verbose) {
             print "Making all coordinates absolute.\n";
         }
-        my @abs_pos = (0,0);
+        my @abs_pos = (0, 0);
         my @start_drawing;
         my $previous;
         my $begin_drawing = 1;  ##This will get updated after
@@ -517,11 +649,11 @@ sub extract_path_info
                     add_coords ($element->{point}, \@abs_pos);
                 }
                 if ($begin_drawing) {
-                        if ($verbose) {
-                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-                        }
-                        $begin_drawing = 0;
-                        @start_drawing = @abs_pos;
+		    if ($verbose) {
+			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+		    }
+		    $begin_drawing = 0;
+		    @start_drawing = @abs_pos;
                 }
                 @abs_pos = @{$element->{point}};
             }
@@ -530,11 +662,11 @@ sub extract_path_info
 		    $element->{x} += $abs_pos[0];
                 }
                 if ($begin_drawing) {
-                        if ($verbose) {
-                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-                        }
-                        $begin_drawing = 0;
-                        @start_drawing = @abs_pos;
+		    if ($verbose) {
+			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+		    }
+		    $begin_drawing = 0;
+		    @start_drawing = @abs_pos;
                 }
                 $abs_pos[0] = $element->{x};
             }
@@ -543,11 +675,11 @@ sub extract_path_info
 		    $element->{y} += $abs_pos[1];
                 }
                 if ($begin_drawing) {
-                        if ($verbose) {
-                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-                        }
-                        $begin_drawing = 0;
-                        @start_drawing = @abs_pos;
+		    if ($verbose) {
+			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+		    }
+		    $begin_drawing = 0;
+		    @start_drawing = @abs_pos;
                 }
                 $abs_pos[1] = $element->{y};
             }
@@ -558,11 +690,11 @@ sub extract_path_info
                     add_coords ($element->{end},      \@abs_pos);
                 }
                 if ($begin_drawing) {
-                        if ($verbose) {
-                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-                        }
-                        $begin_drawing = 0;
-                        @start_drawing = @abs_pos;
+		    if ($verbose) {
+			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+		    }
+		    $begin_drawing = 0;
+		    @start_drawing = @abs_pos;
                 }
                 @abs_pos = @{$element->{end}};
             }
@@ -586,11 +718,11 @@ sub extract_path_info
                     ];
                 }
                 if ($begin_drawing) {
-                        if ($verbose) {
-                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-                        }
-                        $begin_drawing = 0;
-                        @start_drawing = @abs_pos;
+		    if ($verbose) {
+			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+		    }
+		    $begin_drawing = 0;
+		    @start_drawing = @abs_pos;
                 }
                 @abs_pos = @{$element->{end}};
             }
@@ -604,19 +736,19 @@ sub extract_path_info
 		    $element->{y} += $abs_pos[1];
 		}
                 if ($begin_drawing) {
-                        if ($verbose) {
-                                printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-                        }
-                        $begin_drawing = 0;
-                        @start_drawing = @abs_pos;
+		    if ($verbose) {
+			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
+		    }
+		    $begin_drawing = 0;
+		    @start_drawing = @abs_pos;
                 }
                 @abs_pos = ($element->{x}, $element->{y});
-#		print "after: @abs_pos\n";
+		#		print "after: @abs_pos\n";
 	    }
             elsif ($element->{type} eq 'closepath') {
-                ##Bookkeeping
+                # Bookkeeping
                 if ($verbose) {
-                        printf "Closing drawing shape to [%.4f, %.4f]\n", @start_drawing;
+		    printf "Closing drawing shape to [%.4f, %.4f]\n", @start_drawing;
                 }
                 @abs_pos = @start_drawing;
                 $begin_drawing = 1;

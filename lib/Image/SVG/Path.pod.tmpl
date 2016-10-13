@@ -400,21 +400,10 @@ also exists.
 
 =over
 
-=item Mostly does not use the grammar
-
-There is a grammar for the paths in the W3 specification. See
-L<https://www.w3.org/TR/SVG/paths.html#PathDataBNF>. Up to version
-0.27, this module did not use that grammar. From version 0.27 the
-module is gradually being converted to use the SVG grammar, starting
-with whitespace and number parsing. I made this change to doing things
-"the right way" because so many minor errors were found (mostly by
-Colin Kuskie, <COLINK>). In the course of doing this, yet more minor
-errors were discovered.
-
 =item L</no_shortcuts> does not work with quadratic bezier curves
 
-Currently the L</no_shortcuts> option does not work with quadratic
-bezier curves.
+The L</no_shortcuts> option does not work with quadratic bezier
+curves.
 
 =back
 
@@ -428,14 +417,61 @@ exports all of the module's functions, L</extract_path_info>,
 L</reverse_path> and L</create_path_string>. For backward
 compatibility, this does not export the regular expressions.
 
-The SVG-parsing regular expressions which correspond to the SVG
-standard can also be exported. Please refer to the source code of the
-module for a list. To export these, use
+=head2 Regular expressions
+
+The following SVG-parsing regular expressions which (are supposed to) exactly
+correspond to the SVG standard can also be exported.
+
+=over
+
+=item $svg_path
+
+Match a complete path consisting of multiple move-to and drawing
+commands.
+
+=item $drawto_command
+
+Match one drawing command. Note this does not match a move-to
+command. The command is captured as $1.
+
+=item $drawto_commands
+
+Match a sequence of one or more drawing commands.
+
+=item $moveto
+
+Match a move-to command, including any subsequent implicit line-tos.
+
+=item $closepath
+
+=item $curveto
+
+=item $elliptical_arc
+
+=item $horizontal_lineto
+
+=item $lineto
+
+=item $quadratic_bezier_curveto
+
+=item $smooth_quadratic_bezier_curveto
+
+=item $vertical_lineto
+
+=back
+
+Of necessity, underscores (C<_>) have been substituted for the hyphens
+(C<->) in the SVG standard, but otherwise these names correspond
+exactly to the names in the standard.
+
+To export all of these, use
 
     use Image::SVG::Path ':regex';
 
-As of version 0.27, not all of the SVG standard grammar is implemented
-yet.
+The subexpressions used in the definitions of the above (things like
+C<vertical-lineto-argument-sequence>) are not exported, and some of
+the more ridiculous ones (long-winded duplicates of other expressions)
+are not even implemented in this module's source code.
 
 =head1 SEE ALSO
 

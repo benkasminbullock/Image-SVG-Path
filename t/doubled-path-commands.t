@@ -1,10 +1,9 @@
+# Check to see that doubled, implicit commands work for all types.
+
 use warnings;
 use strict;
 use Test::More;
-#use Test::Exception;
 use Image::SVG::Path qw/extract_path_info/;
-
-##Check to see that doubled, implicit commands work for all types
 
 my @sets = (
     'L', 2, 'Double line-to L',
@@ -18,22 +17,23 @@ my @sets = (
     'A', 7, 'Double Arc A',
 );
 
-my @foo;
-while(my ($element, $arg_count, $comment) = splice @sets, 0, 3) {
+while (@sets) {
+    my ($element, $arg_count, $comment) = splice (@sets, 0, 3);
     # Dynamically build a path string to parse, we don't care about
     # the formatting so much as the contents
     my $command = 'M 1 2 ';
-    $command .= join ' ', $element, (1..2*$arg_count);
-    $command .= ' Z';
-#    diag $command;
-    eval {
-	@foo = extract_path_info ($command);
-    };
-    SKIP: {
-	# Not sure why this skip is necessary.
-        skip "$comment failed anyway", 1 if $@;
-        is @foo, 4, "Received 4 path elements for $comment";
+    if ($element eq 'A') {
+	# the elliptical arc cannot take arbitrary numerical values
+	# but only 0 or 1 in some places, so just use 0 and 1 for
+	# everything.
+	$command .= join ' ', $element, (map {$_ % 2} (1..2 * $arg_count));
     }
+    else {
+	$command .= join ' ', $element, (1..2 * $arg_count);
+    }
+    $command .= ' Z';
+    my @foo = extract_path_info ($command);
+    is (@foo, 4, "Received 4 path elements for $comment");
 }
 
 done_testing();

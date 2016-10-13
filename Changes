@@ -1,5 +1,11 @@
 Revision history for perl module Image::SVG::Path
 
+0.28 2016-10-13
+
+* Use the SVG standard regexes to check all inputs.
+* Elliptical arcs no longer accept arbitrary flag values (bug fixed).
+* Document the regular expression exports.
+
 0.27 2016-10-12
 
 * Use number and whitespace regexes from the official SVG grammar
