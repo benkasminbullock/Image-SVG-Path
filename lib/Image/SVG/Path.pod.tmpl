@@ -20,6 +20,9 @@ Image::SVG::Path - read the "d" attribute of an SVG path
 
 [% INCLUDE "synopsis.pl" | xtidy %]
 
+[% pl='synopsis.pl' %]
+(This example is included as L<F<[% pl %]>|https://api.metacpan.org/source/BKB/Image-SVG-Path-[% version %]/examples/[% pl %]> in the distribution.)
+
 =head1 VERSION
 
 This documents version [% version %] of Image::SVG::Path corresponding to git
@@ -68,13 +71,14 @@ and absolute if it is upper case, unless the user chooses the
 L</absolute> option.
 
 C<extract_path_info> replaces all implicit commands with the explicit
-version. For example, a moveto followed by an implicit lineto of the
-form C<M 1 2 3 4> is converted into a moveto C<M 1 2> followed by an
-explicit lineto C<L 3 4>, and a sequence of elliptic arcs, one
-explicit and one implicit, is turned into two elliptic arcs in the
-output. This means that it is not possible to use the output of this
-function to reconstruct the input path string exactly, although the
-actual path itself can be reproduced exactly.
+version. For example, an input moveto followed by an implicit lineto
+of the form C<M 1 2 3 4> is converted into a moveto C<M 1 2> followed
+by an explicit lineto C<L 3 4>. An input sequence of elliptic arcs,
+one explicit and one implicit, is turned into two elliptic arcs in the
+output. This means that "round trips" are not possible; it is not
+possible to use the output of this function to reconstruct the input
+path string exactly, although the actual path itself can be reproduced
+exactly.
 
 A second argument to C<extract_path_info> contains options for the
 extraction in the form of a hash reference. For example,
@@ -95,11 +99,12 @@ upper case.
 
 =item no_shortcuts
 
-If the hash element C<no_shortcuts> is set to a true value then
-shortcut (smooth) cubic bezier curves. ("S" curves) are changed into
-the equivalent "C" curves. This only works in combination with the
-"absolute" option, otherwise it does nothing. It also does not work
-with shortcut (smooth) quadratic bezier curves.
+If the hash element C<no_shortcuts> is set to a true value then smooth
+cubic bezier curves, "S" curves, are changed into the equivalent "C"
+curves. This only works in combination with the "absolute" option,
+otherwise it does nothing. It does not work with smooth quadratic
+bezier curves. See L</no_shortcuts does not work with quadratic bezier
+curves>.
 
 =item verbose
 
@@ -405,6 +410,10 @@ also exists.
 
 =head1 BUGS
 
+[% MACRO bug(number) BLOCK %]
+This is L<bug [% number %]|https://github.com/benkasminbullock/Image-SVG-Path/issues/[% number %]> on the issue tracker.
+[% END # bug(number) %]
+
 =over
 
 =item B<shortcut> should be B<smooth>
@@ -412,20 +421,53 @@ also exists.
 This document and the module both make the error of calling "smooth"
 "shortcut".
 
-=item L</no_shortcuts> does not work with quadratic bezier curves
+[% bug(20) %]
 
-The L</no_shortcuts> option does not work with quadratic bezier
-curves.
+=item no_shortcuts does not work with quadratic bezier curves
 
-=item Some inputs cause blowups with C<$svg_path>.
+The L</no_shortcuts> option to L</extract_path_info> does not work
+with quadratic bezier curves. See also L</HISTORY>.
 
-Some inputs are known to blow up the L</$svg_path> regex, causing
-errors of the form Q<Complex regular subexpression recursion limit
+[% bug(19) %]
+
+=item Some inputs cause blowups
+
+Some relatively simple inputs blow up the L</$svg_path> regex, causing
+errors of the form I<Complex regular subexpression recursion limit
 (32766) exceeded>. See the file F<t/export-regex.t> for an example
 (commented out).
 
-As of version 0.29, C<$svg_path> is no longer used to check the path
-inputs of L</extract_path_info>.
+Because of this, as of version 0.29, C<$svg_path> is no longer used to
+check the path inputs of L</extract_path_info>.
+
+I am not sure whether this issue is inherent in the SVG grammar or
+whether it is caused by some kind of regex error. I (Ben Bullock)
+believe that the regular expression L</$svg_path> exactly follows the
+SVG grammar, does not contain any duplicates, and that the problems
+arise because the grammar itself is inherently difficult to parse.
+This is because of the many ambiguous ways that numbers can be put
+into a list. For example 123-456,1e-78+9 has to be parsed into four
+numbers. The SVG standard insists on this for the sake of saving a few
+bytes of whitespace or commas, which, considering that these condensed
+paths are embedded within the excruciatingly verbose XML format, seems
+a false economy.
+
+But I might be wrong about that, so if you can find an error in my
+regular expression, let me know.
+
+[% bug(21) %]
+
+=item reverse_path only works for cubic bezier curves
+
+See L</reverse_path>.
+
+[% bug(23) %]
+
+=item create_path_string does not work for quadratic bezier curves
+
+See L</create_path_string>.
+
+[% bug(22) %]
 
 =back
 
@@ -449,7 +491,7 @@ correspond to the SVG standard can also be exported.
 =item $svg_path
 
 Match a complete path consisting of multiple move-to and drawing
-commands.
+commands. See also L</Some inputs cause blowups>.
 
 =item $drawto_command
 
@@ -536,6 +578,11 @@ Render SVG via a Gnome library.
 
 This module reads the "transform" attribute of an SVG element.
 
+=item L<Image::Info::SVG>
+
+Part of L<Image::Info>, you can get dimensions and other information
+about SVG images without the bother of parsing the file.
+
 =back
 
 =head2 SVG standards
@@ -585,8 +632,10 @@ recognition system|http://kanji.sljfaq.org> which relies on the
 KanjiVG data. At the time I (Ben Bullock) created this, I only had a
 vague idea of what SVG was. The KanjiVG data consists only of a subset
 of SVG, namely the initial move-tos and cubic bezier curves, which is
-why some parts of this module (L</reverse_path>) only deal with that
-kind of SVG path.
+why some parts of this module only deal with that kind of SVG path. At
+the time I started using it, the KanjiVG data actually contained a
+number of kanji strokes going in the wrong direction, and
+L</reverse_path> was devised as a way to fix these.
 
 =head1 ACKNOWLEDGEMENTS
 
