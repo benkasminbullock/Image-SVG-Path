@@ -127,8 +127,8 @@ correctly.
 Given a set of information as created by L</extract_path_info>, turn
 them into an SVG string representing a path.
 
-This only works for cubic bezier curves and the initial moveto element
-for absolute position and no shortcuts (C elements only).
+This only works for elements with C<absolute> position with no
+shortcuts. It does not handle quadratic bezier curves.
 
 =head1 SVG path elements
 
@@ -417,6 +417,16 @@ This document and the module both make the error of calling "smooth"
 The L</no_shortcuts> option does not work with quadratic bezier
 curves.
 
+=item Some inputs cause blowups with C<$svg_path>.
+
+Some inputs are known to blow up the L</$svg_path> regex, causing
+errors of the form Q<Complex regular subexpression recursion limit
+(32766) exceeded>. See the file F<t/export-regex.t> for an example
+(commented out).
+
+As of version 0.29, C<$svg_path> is no longer used to check the path
+inputs of L</extract_path_info>.
+
 =back
 
 =head1 EXPORTS
@@ -466,6 +476,8 @@ line-tos. See L</Move to elements, M>.
 =item $lineto
 
 =item $quadratic_bezier_curveto
+
+=item $smooth_curveto
 
 =item $smooth_quadratic_bezier_curveto
 
@@ -573,8 +585,8 @@ recognition system|http://kanji.sljfaq.org> which relies on the
 KanjiVG data. At the time I (Ben Bullock) created this, I only had a
 vague idea of what SVG was. The KanjiVG data consists only of a subset
 of SVG, namely the initial move-tos and cubic bezier curves, which is
-why some parts of this module (L</reverse_path> and
-L</create_path_string>) only deal with that kind of SVG path.
+why some parts of this module (L</reverse_path>) only deal with that
+kind of SVG path.
 
 =head1 ACKNOWLEDGEMENTS
 

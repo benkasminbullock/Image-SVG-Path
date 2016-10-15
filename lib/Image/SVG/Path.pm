@@ -6,6 +6,7 @@ our @ISA = qw(Exporter);
 our @SVG_REGEX = qw/
 		       $closepath
 		       $curveto
+		       $smooth_curveto
 		       $drawto_command
 		       $drawto_commands
 		       $elliptical_arc
@@ -138,113 +139,116 @@ sub create_path_string
 
 my $e = qr/[eE]/;
 
-# These regular expressions are directly taken from the SVG grammar,
-# https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+# This whitespace regex is from the SVG grammar,
+# https://www.w3.org/TR/SVG/paths.html#PathDataBNF.
 
-our $sign = qr/\+|\-/;
+my $wsp = qr/[\x20\x09\x0D\x0A]/;
 
-our $wsp = qr/[\x20\x09\x0D\x0A]/;
+# The latter commented-out part of this regex fixes a backtracking
+# problem caused by numbers like 123-234 which are supposed to be
+# parsed as two numbers "123" and "-234", as if containing a
+# comma. The regular expression blows up and cannot handle this
+# format. However, adding this final part slows the module down by a
+# factor of about 25%, so they are commented out.
 
-our $comma_wsp = qr/(?:$wsp+,?$wsp*|,$wsp*)/;
+my $comma_wsp = qr/$wsp+|$wsp*,$wsp*/;#|(?<=[0-9])(?=-)/;
 
-# The following regular expression splits the path into pieces Note we
-# only split on '-' or '+' when not preceeded by 'e'.  This regular
-# expression is not following the SVG grammar, it is going our own
-# way.
+# The following regular expression splits the path into pieces. Note
+# this only splits on '-' or '+' when not preceeded by 'e'.  This
+# regular expression is not following the SVG grammar, it is going our
+# own way.
 
 my $split_re = qr/
 		     (?:
-			 $wsp*,$wsp*
+			 $comma_wsp
 		     |
 			 (?<!$e)(?=-)
 		     |
 			 (?<!$e)(?:\+)
-		     |
-			 $wsp+
 		     )
 		 /x;
 
-# Match a number
+# Regular expressions to match numbers
 
-# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
-
-# $ds is "digit sequence", and it accounts for all the uses of "digit"
-# in the SVG path grammar, so there is no "digit" here.
-
+# Digit sequence
 
 my $ds = qr/[0-9]+/;
-our $digit_sequence = $ds;
 
-# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+my $sign = qr/[\+\-]/;
 
-# Aside to whoever wrote the SVG standards: this is not an integer,
-# it's a whole number!
+# Fractional constant
 
-our $integer_constant = qr/$ds/;
+my $fc = qr/$ds?\.$ds/;
 
-# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+my $exponent = qr/$e$sign?$ds/x;
 
-our $fractional_constant = qr/$ds? \. $ds/x;
+# Floating point constant
 
-# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
-
-our $exponent = qr/
-		     $e
-		     $sign?
-		     $ds
-		 /x;
-
-# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
-
-our $floating_point_constant = qr/
-				    $fractional_constant 
-				    $exponent?
-				|
-				    $ds
-				    $exponent
-				/x;
+my $fpc = qr/
+		$fc 
+		$exponent?
+	    |
+		$ds
+		$exponent
+	    /x;
 
 
-# From SVG grammar, https://www.w3.org/TR/SVG/paths.html#PathDataBNF
+# Non-negative number. $floating_point_constant needs to go before
+# $ds, otherwise it matches the shorter $ds every time.
 
-# $floating_point_constant needs to go before $integer_constant,
-# otherwise it matches the shorter $integer_constant every time.
+my $nnn = qr/
+		$fpc
+	    |
+		$ds
+	    /x;
 
-our $number = qr/
-		    $sign?
-		    $floating_point_constant
-		|
-		    $sign?
-		    $integer_constant
-		/x;
+my $number = qr/$sign?$nnn/;
 
-my $pair = qr/$number $comma_wsp? $number/x;
+my $pair = qr/$number$comma_wsp?$number/;
 
-my $pairs = qr/(?:$pair $wsp)* $pair/x;
+my $pairs = qr/(?:$pair$wsp)*$pair/;
 
-my $numbers = qr/(?:$number $wsp)* $number/x;
+my $numbers = qr/(?:$number$wsp)*$number/;
 
 # Quadratic bezier curve
 
-my $qarg = qr/$pair $comma_wsp? $pair/x;
+my $qarg = qr/$pair$comma_wsp?$pair/;
 
-our $quadratic_bezier_curveto = qr/
-				      ([Qq])
-				      $wsp*
-				      (
-					  (?:$qarg $comma_wsp?)*
-					  $qarg
-				      )
-				  /x;
+our $quadratic_bezier_curveto = 
+qr/
+      ([Qq])
+      $wsp*
+      (
+	  (?:$qarg $comma_wsp?)*
+	  $qarg
+      )
+  /x;
 
 our $smooth_quadratic_bezier_curveto =
-qr/([Tt]) $wsp* ((?:$pair $comma_wsp?)* $pair)/x;
+qr/
+      ([Tt])
+      $wsp*
+      (
+	  (?:$pair $comma_wsp?)*
+	  $pair
+      )
+  /x;
 
 # Cubic bezier curve
 
-my $sarg = qr/$pair $comma_wsp $pair/x;
+my $sarg = qr/$pair$comma_wsp?$pair/;
 
-our $smooth_curveto = qr/([Ss]) $wsp* ((?:$sarg $comma_wsp)* $sarg)/x;
+our $smooth_curveto = qr/
+			    ([Ss])
+			    $wsp*
+			    (
+				(?:
+				    $sarg
+				    $comma_wsp
+				)*
+				$sarg
+			    )
+			/x;
 
 my $carg = qr/(?:$pair $comma_wsp?){2} $pair/x;
 
@@ -257,17 +261,7 @@ our $curveto = qr/
 		     )
 		 /x;
 
-# Elliptical arc-related
-
-our $nonnegative_number = qr/
- 			       $integer_constant
- 			   |
- 			       $floating_point_constant
- 			   /x;
-
-my $nnn = $nonnegative_number;
-
-our $flag = qr/[01]/;
+my $flag = qr/[01]/;
 
 my $eaa = qr/
 		$nnn
@@ -292,8 +286,6 @@ our $horizontal_lineto = qr/([Hh]) $wsp* ($numbers)/x;
 our $lineto = qr/([Ll]) $wsp* ($pairs)/x;
 
 our $closepath = qr/([Zz])/;
-
-our $moveto_argument_sequence = $pairs;
 
 our $moveto = qr/
 		    ([Mm]) $wsp* ($pairs)
@@ -325,7 +317,7 @@ our $drawto_commands = qr/
 			     (?:$drawto_command $wsp)*
 			     $drawto_command
 			 /x;
-my $mdc_group = qr/
+our $mdc_group = qr/
 		      $moveto
 		      $wsp*
 		      $drawto_commands
@@ -358,9 +350,6 @@ sub extract_path_info
     my $me = 'extract_path_info';
     if (! $path) {
         croak "$me: no input";
-    }
-    if ($path !~ $svg_path) {
-	croak "$me: ungrammatical path '$path'";
     }
     # Create an empty options so that we don't have to
     # keep testing whether the "options" string is defined or not
