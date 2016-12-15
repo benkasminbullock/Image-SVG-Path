@@ -22,7 +22,7 @@ our @SVG_REGEX = qw/
 our @FUNCTIONS = qw/extract_path_info reverse_path create_path_string/;
 our @EXPORT_OK = (@FUNCTIONS, @SVG_REGEX);
 our %EXPORT_TAGS = (all => \@FUNCTIONS, regex => \@SVG_REGEX);
-our $VERSION = '0.29';
+our $VERSION = '0.30';
 
 use Carp;
 
@@ -418,21 +418,21 @@ sub extract_path_info
         push @curves, [$command, $values, $original];
     }
     for my $curve_data (@curves) {
-        my ($curve_type, $curve) = @$curve_data;
-        $curve =~ s/^,//;
+        my ($command, $values) = @$curve_data;
 #	print "$curve\n";
-        my @numbers = split $split_re, $curve;
+        my @numbers = ($values =~ /($number)/g);
 #	print "@numbers\n";
         if ($verbose) {
-            print "$me: Extracted numbers: @numbers\n";
+            printf "$me: Extracted %d numbers: %s\n", scalar (@numbers),
+	    join (" ! ", @numbers);
         }
-        if (uc $curve_type eq 'C') {
+        if (uc $command eq 'C') {
             my $expect_numbers = 6;
             if (@numbers % 6 != 0) {
                 croak "$me: Wrong number of values for a C curve " .
                     scalar @numbers . " in '$path'";
             }
-            my $position = position_type ($curve_type);
+            my $position = position_type ($command);
             for (my $i = 0; $i < @numbers / 6; $i++) {
                 my $offset = 6 * $i;
                 my @control1 = @numbers[$offset + 0, $offset + 1];
@@ -447,17 +447,17 @@ sub extract_path_info
                     control1 => \@control1,
                     control2 => \@control2,
                     end => \@end,
-                    svg_key => $curve_type,
+                    svg_key => $command,
                 };
             }
         }
-        elsif (uc $curve_type eq 'S') {
+        elsif (uc $command eq 'S') {
             my $expect_numbers = 4;
             if (@numbers % $expect_numbers != 0) {
                 croak "$me: Wrong number of values for an S curve " .
                     scalar @numbers . " in '$path'";
             }
-            my $position = position_type ($curve_type);
+            my $position = position_type ($command);
             for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
                 my $offset = $expect_numbers * $i;
                 my @control2 = @numbers[$offset + 0, $offset + 1];
@@ -468,11 +468,11 @@ sub extract_path_info
                     position => $position,
                     control2 => \@control2,
                     end => \@end,
-                    svg_key => $curve_type,
+                    svg_key => $command,
                 };
             }
         }
-        elsif (uc $curve_type eq 'L') {
+        elsif (uc $command eq 'L') {
             my $expect_numbers = 2;
 	    # Maintain this check here, even though it's duplicated
 	    # inside build_lineto, because it's specific to the lineto
@@ -480,29 +480,29 @@ sub extract_path_info
                 croak "Odd number of values for an L command " .
                     scalar (@numbers) . " in '$path'";
             }
-            my $position = position_type ($curve_type);
+            my $position = position_type ($command);
 	    push @path_info, build_lineto ($position, @numbers);
         }
-        elsif (uc $curve_type eq 'Z') {
+        elsif (uc $command eq 'Z') {
             if (@numbers > 0) {
                 croak "Wrong number of values for a Z command " .
                     scalar @numbers . " in '$path'";
             }
-            my $position = position_type ($curve_type);
+            my $position = position_type ($command);
 	    push @path_info, {
 		type => 'closepath',
 		name => 'closepath',
 		position => $position,
-		svg_key => $curve_type,
+		svg_key => $command,
             }
         }
-        elsif (uc $curve_type eq 'Q') {
+        elsif (uc $command eq 'Q') {
             my $expect_numbers = 4;
             if (@numbers % $expect_numbers != 0) {
                 croak "Wrong number of values for a Q command " .
                     scalar @numbers . " in '$path'";
             }
-            my $position = position_type ($curve_type);
+            my $position = position_type ($command);
             for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
                 my $o = $expect_numbers * $i;
                 push @path_info, {
@@ -511,17 +511,17 @@ sub extract_path_info
                     position => $position,
                     control => [@numbers[$o, $o + 1]],
                     end => [@numbers[$o + 2, $o + 3]],
-                    svg_key => $curve_type,
+                    svg_key => $command,
                 }
             }
         }
-        elsif (uc $curve_type eq 'T') {
+        elsif (uc $command eq 'T') {
             my $expect_numbers = 2;
             if (@numbers % $expect_numbers != 0) {
                 croak "$me: Wrong number of values for an T command " .
                     scalar @numbers . " in '$path'";
             }
-            my $position = position_type ($curve_type);
+            my $position = position_type ($command);
             for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
                 my $o = $expect_numbers * $i;
                 push @path_info, {
@@ -529,36 +529,36 @@ sub extract_path_info
 		    name => 'Shorthand/smooth quadratic Bézier curveto',
                     position => $position,
                     end => [@numbers[$o, $o + 1]],
-                    svg_key => $curve_type,
+                    svg_key => $command,
                 }
             }
         }
-        elsif (uc $curve_type eq 'H') {
-            my $position = position_type ($curve_type);
+        elsif (uc $command eq 'H') {
+            my $position = position_type ($command);
             for (my $i = 0; $i < @numbers; $i++) {
                 push @path_info, {
                     type => 'horizontal-line-to',
 		    name => 'horizontal lineto',
                     position => $position,
                     x => $numbers[$i],
-                    svg_key => $curve_type,
+                    svg_key => $command,
                 };
             }
         }
-        elsif (uc $curve_type eq 'V') {
-            my $position = position_type ($curve_type);
+        elsif (uc $command eq 'V') {
+            my $position = position_type ($command);
             for (my $i = 0; $i < @numbers; $i++) {
                 push @path_info, {
                     type => 'vertical-line-to',
 		    name => 'vertical lineto',
                     position => $position,
                     y => $numbers[$i],
-                    svg_key => $curve_type,
+                    svg_key => $command,
                 };
             }
         }
-        elsif (uc $curve_type eq 'A') {
-            my $position = position_type ($curve_type);
+        elsif (uc $command eq 'A') {
+            my $position = position_type ($command);
             my $expect_numbers = 7;
 	    if (@numbers % $expect_numbers != 0) {
 		croak "$me: Need 7 parameters for arc";
@@ -566,7 +566,7 @@ sub extract_path_info
             for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
                 my $o = $expect_numbers * $i;
                 my %arc;
-                $arc{svg_key} = $curve_type;
+                $arc{svg_key} = $command;
                 $arc{type} = 'arc';
                 $arc{name} = 'elliptical arc';
                 $arc{position} = $position;
@@ -574,9 +574,9 @@ sub extract_path_info
                 push @path_info, \%arc;
             }
         }
-	elsif (uc $curve_type eq 'M') {
+	elsif (uc $command eq 'M') {
             my $expect_numbers = 2;
-	    my $position = position_type ($curve_type);
+	    my $position = position_type ($command);
 	    if (@numbers < $expect_numbers) {
 		croak "$me: Need at least $expect_numbers numbers for move to";
 	    }
@@ -589,7 +589,7 @@ sub extract_path_info
 		name => 'moveto',
 		position => $position,
 		point => [@numbers[0,1]],
-		svg_key => $curve_type,
+		svg_key => $command,
 	    };
 	    # M can be followed by implicit line-to commands, so
 	    # consume these.
@@ -599,7 +599,7 @@ sub extract_path_info
 	    }
 	}
         else {
-            croak "I don't know what to do with a curve type '$curve_type'";
+            croak "I don't know what to do with a curve type '$command'";
         }
     }
 

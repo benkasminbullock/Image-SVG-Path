@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.30 2016-12-15
+
+* Bug in parsing sequence of numbers like 2.4.1.2 fixed.
+
 0.29 2016-10-15
 
 * Exports $smooth_curveto regex
