@@ -428,13 +428,13 @@ sub extract_path_info
         }
         if (uc $command eq 'C') {
             my $expect_numbers = 6;
-            if (@numbers % 6 != 0) {
+            if (@numbers % $expect_numbers != 0) {
                 croak "$me: Wrong number of values for a C curve " .
                     scalar @numbers . " in '$path'";
             }
             my $position = position_type ($command);
-            for (my $i = 0; $i < @numbers / 6; $i++) {
-                my $offset = 6 * $i;
+            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
+                my $offset = $expect_numbers * $i;
                 my @control1 = @numbers[$offset + 0, $offset + 1];
                 my @control2 = @numbers[$offset + 2, $offset + 3];
                 my @end      = @numbers[$offset + 4, $offset + 5];
