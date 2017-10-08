@@ -22,7 +22,7 @@ our @SVG_REGEX = qw/
 our @FUNCTIONS = qw/extract_path_info reverse_path create_path_string/;
 our @EXPORT_OK = (@FUNCTIONS, @SVG_REGEX);
 our %EXPORT_TAGS = (all => \@FUNCTIONS, regex => \@SVG_REGEX);
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 
 use Carp;
 
@@ -63,7 +63,7 @@ sub reverse_path
         croak "$me: no input";
     }
     my @values = extract_path_info ($path, {
-        no_shortcuts => 1,
+        no_smooth => 1,
         absolute => 1,
     });
     if (! @values) {
@@ -463,7 +463,7 @@ sub extract_path_info
                 my @control2 = @numbers[$offset + 0, $offset + 1];
                 my @end      = @numbers[$offset + 2, $offset + 3];
                 push @path_info, {
-                    type => 'shortcut-cubic-bezier',
+                    type => 'smooth-cubic-bezier',
 		    name => 'shorthand/smooth curveto',
                     position => $position,
                     control2 => \@control2,
@@ -525,7 +525,7 @@ sub extract_path_info
             for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
                 my $o = $expect_numbers * $i;
                 push @path_info, {
-                    type => 'shortcut-quadratic-bezier',
+                    type => 'smooth-quadratic-bezier',
 		    name => 'Shorthand/smooth quadratic Bézier curveto',
                     position => $position,
                     end => [@numbers[$o, $o + 1]],
@@ -607,7 +607,7 @@ sub extract_path_info
     # paths etc. 
     
     my $absolute = $options_ref->{absolute};
-    my $no_shortcuts = $options_ref->{no_shortcuts};
+    my $no_smooth = $options_ref->{no_shortcuts} || $options_ref->{no_smooth};
     if ($absolute) {
         if ($verbose) {
             print "Making all coordinates absolute.\n";
@@ -687,12 +687,12 @@ sub extract_path_info
                 }
                 @abs_pos = @{$element->{end}};
             }
-            elsif ($element->{type} eq 'shortcut-cubic-bezier') {
+            elsif ($element->{type} eq 'smooth-cubic-bezier') {
                 if ($element->{position} eq 'relative') {
                     add_coords ($element->{control2}, \@abs_pos);
                     add_coords ($element->{end},      \@abs_pos);
                 }
-                if ($no_shortcuts) {
+                if ($no_smooth) {
                     if (!$previous) {
                         die "No previous element";
                     }
