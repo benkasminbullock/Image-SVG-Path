@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.30_01 2017-11-02
+
+* Split path rather than use regex (Alexander Gorlov)
+
 0.31 2017-10-08
 
 * Changed "shortcuts" to "smooth".
