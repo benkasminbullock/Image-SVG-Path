@@ -379,7 +379,10 @@ sub extract_path_info
     my @curves;
     while ( $path_pos < scalar @path ) {
         my $command = $path[$path_pos];
-        my $values = $path[$path_pos+1]//'';
+        my $values = $path[$path_pos+1];
+	if (! defined $values) {
+	    $values = '';
+	}
         my $original = "${command}${values}";
 	if ($original !~ /$moveto|$drawto_command/x) {
 	    warn "Cannot parse '$original' using moveto/drawto_command regex";
