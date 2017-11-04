@@ -3,7 +3,7 @@ use warnings;
 use strict;
 use Template;
 use FindBin '$Bin';
-use Perl::Build qw/get_version get_commit/;
+use Perl::Build qw/get_version get_commit get_info/;
 use Perl::Build::Pod ':all';
 use Deploy qw/do_system older/;
 use Getopt::Long;
@@ -21,6 +21,7 @@ my %pbv = (
 );
 my $version = get_version (%pbv);
 my $commit = get_commit (%pbv);
+my $info = get_info (%pbv);
 # Names of the input and output files containing the documentation.
 
 my $pod = 'Path.pod';
@@ -32,6 +33,7 @@ my $output = "$Bin/lib/Image/SVG/$pod";
 my %vars = (
     version => $version,
     commit => $commit,
+    info => $info,
 );
 
 my $tt = Template->new (

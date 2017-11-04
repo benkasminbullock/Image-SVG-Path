@@ -22,7 +22,7 @@ our @SVG_REGEX = qw/
 our @FUNCTIONS = qw/extract_path_info reverse_path create_path_string/;
 our @EXPORT_OK = (@FUNCTIONS, @SVG_REGEX);
 our %EXPORT_TAGS = (all => \@FUNCTIONS, regex => \@SVG_REGEX);
-our $VERSION = '0.31_01';
+our $VERSION = '0.31_02';
 
 use Carp;
 
@@ -157,16 +157,6 @@ my $comma_wsp = qr/$wsp+|$wsp*,$wsp*/;#|(?<=[0-9])(?=-)/;
 # this only splits on '-' or '+' when not preceeded by 'e'.  This
 # regular expression is not following the SVG grammar, it is going our
 # own way.
-
-my $split_re = qr/
-		     (?:
-			 $comma_wsp
-		     |
-			 (?<!$e)(?=-)
-		     |
-			 (?<!$e)(?:\+)
-		     )
-		 /x;
 
 # Regular expressions to match numbers
 

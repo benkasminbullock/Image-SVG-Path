@@ -1,6 +1,6 @@
 Revision history for perl module Image::SVG::Path
 
-0.31_01 2017-11-02
+0.31_02 2017-11-04
 
 * Split path rather than use regex (Alexander Gorlov)
 
