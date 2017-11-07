@@ -459,7 +459,13 @@ correspond to the SVG standard can also be exported.
 =item $svg_path
 
 Match a complete path consisting of multiple move-to and drawing
-commands. See also L</Some inputs cause blowups>.
+commands. Some relatively simple inputs blow up the C<$svg_path>
+regex, causing errors of the form I<Complex regular subexpression
+recursion limit (32766) exceeded>. See the file F<t/export-regex.t>
+for an example (commented out).
+
+This was withdrawn from use in parsing the paths in version 0.29 of
+the module.
 
 =item $drawto_command
 
