@@ -425,33 +425,6 @@ with quadratic bezier curves. See also L</HISTORY>.
 
 [% bug(19) %]
 
-=item Some inputs cause blowups
-
-Some relatively simple inputs blow up the L</$svg_path> regex, causing
-errors of the form I<Complex regular subexpression recursion limit
-(32766) exceeded>. See the file F<t/export-regex.t> for an example
-(commented out).
-
-Because of this, as of version 0.29, C<$svg_path> is no longer used to
-check the path inputs of L</extract_path_info>.
-
-I am not sure whether this issue is inherent in the SVG grammar or
-whether it is caused by some kind of regex error. I (Ben Bullock)
-believe that the regular expression L</$svg_path> exactly follows the
-SVG grammar, does not contain any duplicates, and that the problems
-arise because the grammar itself is inherently difficult to parse.
-This is because of the many ambiguous ways that numbers can be put
-into a list. For example 123-456,1e-78+9 has to be parsed into four
-numbers. The SVG standard insists on this for the sake of saving a few
-bytes of whitespace or commas, which, considering that these condensed
-paths are embedded within the excruciatingly verbose XML format, seems
-a false economy.
-
-But I might be wrong about that, so if you can find an error in my
-regular expression, let me know.
-
-[% bug(21) %]
-
 =item reverse_path only works for cubic bezier curves
 
 See L</reverse_path>.
