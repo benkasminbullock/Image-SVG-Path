@@ -471,17 +471,14 @@ sub extract_path_info
                 croak "$me: Wrong number of values for an T command " .
                     scalar @numbers . " in '$path'";
             }
-            my $position = position_type ($command);
-            for (my $i = 0; $i < @numbers / $expect_numbers; $i++) {
-                my $o = $expect_numbers * $i;
-                push @path_info, {
-                    type => 'smooth-quadratic-bezier',
-		    name => 'Shorthand/smooth quadratic Bézier curveto',
-                    position => $position,
-                    end => [@numbers[$o, $o + 1]],
-                    svg_key => $command,
-                }
-            }
+
+            push @path_info, map { +{
+                type     => 'smooth-quadratic-bezier',
+                name     => 'Shorthand/smooth quadratic Bézier curveto',
+                position => position_type($command),
+                end      => $_,
+                svg_key  => $command,
+            }} pairs @numbers;
         }
         elsif (uc $command eq 'H') {
             my $position = position_type ($command);
