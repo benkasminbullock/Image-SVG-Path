@@ -1,6 +1,9 @@
 package Image::SVG::Path;
 use warnings;
 use strict;
+
+use List::Util qw/ pairs /;
+
 require Exporter;
 our @ISA = qw(Exporter);
 our @SVG_REGEX = qw/
@@ -713,25 +716,17 @@ sub extract_path_info
 sub build_lineto
 {
     my ($position, @coords) = @_;
-    my @path_info = ();
-    my $n_coords = scalar (@coords);
-    if ($n_coords % 2 != 0) {
-	# This trap should never be reached, since we should always
-	# check before entering this routine. However, we keep it for
-	# safety.
-	croak "Odd number of coordinates in lineto";
-    }
-    while (my ($x, $y) = splice @coords, 0, 2) {
-	push @path_info, {
-	    type => 'line-to',
-	    name => 'lineto',
-	    position => $position,
-	    point => [$x, $y],
-	    end => [$x, $y],
-	    svg_key => ($position eq 'absolute' ? 'L' : 'l'),
-	};
-    }
-    return @path_info;
+
+    my $key = $position eq 'absolute' ? 'L' : 'l';
+
+    my %shared = (
+        type     => 'line-to',
+        name     => 'lineto',
+        position => $position,
+        svg_key  => $key,
+    );
+
+    return map { +{ %shared, point => $_, end => $_, } } pairs @coords;
 }
 
 1;
