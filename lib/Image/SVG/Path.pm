@@ -559,9 +559,9 @@ sub extract_path_info
     my $absolute = $options_ref->{absolute};
     my $no_smooth = $options_ref->{no_shortcuts} || $options_ref->{no_smooth};
     if ($absolute) {
-        if ($verbose) {
-            print "Making all coordinates absolute.\n";
-        }
+
+        print "Making all coordinates absolute.\n" if $verbose;
+
         my @abs_pos = (0, 0);
         my @start_drawing;
         my $previous;
@@ -588,9 +588,10 @@ sub extract_path_info
                     add_coords ($element->{point}, \@abs_pos);
                 }
                 if ($begin_drawing) {
-		    if ($verbose) {
-			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-		    }
+
+                    printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos 
+                        if $verbose;
+
 		    $begin_drawing = 0;
 		    @start_drawing = @abs_pos;
                 }
@@ -629,9 +630,9 @@ sub extract_path_info
                     add_coords ($element->{end},      \@abs_pos);
                 }
                 if ($begin_drawing) {
-		    if ($verbose) {
-			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-		    }
+                    printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos 
+                        if $verbose;
+
 		    $begin_drawing = 0;
 		    @start_drawing = @abs_pos;
                 }
@@ -657,9 +658,8 @@ sub extract_path_info
                     ];
                 }
                 if ($begin_drawing) {
-		    if ($verbose) {
-			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-		    }
+                    printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos 
+                        if $verbose;
 		    $begin_drawing = 0;
 		    @start_drawing = @abs_pos;
                 }
@@ -675,9 +675,8 @@ sub extract_path_info
 		    $element->{y} += $abs_pos[1];
 		}
                 if ($begin_drawing) {
-		    if ($verbose) {
-			printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos;
-		    }
+                    printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos 
+                        if $verbose;
 		    $begin_drawing = 0;
 		    @start_drawing = @abs_pos;
                 }
