@@ -63,11 +63,9 @@ sub reverse_path
 
     my @values = extract_path_info ($path, {
         no_smooth => 1,
-        absolute => 1,
-    });
-    if (! @values) {
-        return '';
-    }
+        absolute  => 1,
+    }) or return '';
+
     my @rvalues;
     my $end_point = $values[0]->{point};
     for my $value (@values[1..$#values]) {
