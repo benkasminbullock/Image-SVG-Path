@@ -57,11 +57,10 @@ sub add_coords
 
 sub reverse_path
 {
-    my ($path) = @_;
     my $me = 'reverse_path';
-    if (! $path) {
-        croak "$me: no input";
-    }
+
+    my $path = shift or croak "$me: no input";
+
     my @values = extract_path_info ($path, {
         no_smooth => 1,
         absolute => 1,
