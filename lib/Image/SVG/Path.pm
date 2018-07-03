@@ -481,28 +481,22 @@ sub extract_path_info
             }} pairs @numbers;
         }
         elsif (uc $command eq 'H') {
-            my $position = position_type ($command);
-            for (my $i = 0; $i < @numbers; $i++) {
-                push @path_info, {
-                    type => 'horizontal-line-to',
-		    name => 'horizontal lineto',
-                    position => $position,
-                    x => $numbers[$i],
-                    svg_key => $command,
-                };
-            }
+            push @path_info, map { +{
+                type => 'horizontal-line-to',
+                name => 'horizontal lineto',
+                position => position_type($command),
+                x => $_,
+                svg_key => $command,
+            }} @numbers;
         }
         elsif (uc $command eq 'V') {
-            my $position = position_type ($command);
-            for (my $i = 0; $i < @numbers; $i++) {
-                push @path_info, {
-                    type => 'vertical-line-to',
-		    name => 'vertical lineto',
-                    position => $position,
-                    y => $numbers[$i],
-                    svg_key => $command,
-                };
-            }
+            push @path_info, map { +{
+                type => 'vertical-line-to',
+                name => 'vertical lineto',
+                position => position_type($command),
+                y => $_,
+                svg_key => $command,
+            }} @numbers;
         }
         elsif (uc $command eq 'A') {
             my $position = position_type ($command);
