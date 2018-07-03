@@ -616,9 +616,8 @@ sub extract_path_info
             }
             elsif ($element->{type} eq 'cubic-bezier') {
                 if ($element->{position} eq 'relative') {
-                    add_coords ($element->{control1}, \@abs_pos);
-                    add_coords ($element->{control2}, \@abs_pos);
-                    add_coords ($element->{end},      \@abs_pos);
+                    add_coords($element->{$_}, \@abs_pos)
+                        for qw/ control1 control2 end /;
                 }
                 if ($begin_drawing) {
                     printf "Beginning drawing at [%.4f, %.4f]\n", @abs_pos 
@@ -631,16 +630,15 @@ sub extract_path_info
             }
             elsif ($element->{type} eq 'smooth-cubic-bezier') {
                 if ($element->{position} eq 'relative') {
-                    add_coords ($element->{control2}, \@abs_pos);
-                    add_coords ($element->{end},      \@abs_pos);
+                    add_coords ($element->{$_}, \@abs_pos)
+                        for qw/ control2 end /;
                 }
                 if ($no_smooth) {
-                    if (!$previous) {
-                        die "No previous element";
-                    }
-                    if ($previous->{type} ne 'cubic-bezier') {
-                        die "Bad previous element type $previous->{type}";
-                    }
+                    die "No previous element" unless $previous;
+
+                    die "Bad previous element type $previous->{type}"
+                        if $previous->{type} ne 'cubic-bezier';
+
                     $element->{type} = 'cubic-bezier';
                     $element->{svg_key} = 'C';
                     $element->{control1} = [
@@ -676,17 +674,16 @@ sub extract_path_info
 	    }
             elsif ($element->{type} eq 'closepath') {
                 # Bookkeeping
-                if ($verbose) {
-		    printf "Closing drawing shape to [%.4f, %.4f]\n", @start_drawing;
-                }
+                printf "Closing drawing shape to [%.4f, %.4f]\n", @start_drawing 
+                    if $verbose;
                 @abs_pos = @start_drawing;
                 $begin_drawing = 1;
             }
             $element->{position} = 'absolute';
-	    if (! $element->{svg_key}) {
-		die "No SVG key";
-	    }
-            $element->{svg_key} = uc $element->{svg_key};
+
+            $element->{svg_key} = uc $element->{svg_key}
+                or die "No SVG key";
+
             $previous = $element;
         }
     }
