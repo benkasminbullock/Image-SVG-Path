@@ -90,44 +90,36 @@ sub reverse_path
     ]);
 }
 
+my %create_path_string_type = (
+    moveto => sub { sprintf "M%f,%f ", @{$_[0]->{point}} },
+    'cubic-bezier' => sub {
+        my $element = shift;
+        return sprintf "C%f,%f %f,%f %f,%f ", 
+            map { $element->{$_} } qw/ control1 control2 end /;
+    },
+    closepath => sub { 'Z' },
+    'vertical-line-to'   => sub { sprintf "V%f", $_[0]->{y} },
+    'horizontal-line-to' => sub { sprintf "H%f", $_[0]->{x} },
+    'line-to' => sub { sprintf "L%f,%f", @{$_[0]->{point}} },
+    arc => sub { 
+        my $element = shift;
+        my @f = map {sprintf ("%f", $element->{$_})} @arc_fields;
+        return "A ". join (',', @f) . " ";
+    }
+);
+
 sub create_path_string
 {
     my ($info_ref) = @_;
-    my $path = '';
-    for my $element (@$info_ref) {
-        my $t = $element->{type};
-#        print "$t\n";
-        if ($t eq 'moveto') {
-            my @p = @{$element->{point}};
-            $path .= sprintf ("M%f,%f ", @p);
-        }
-        elsif ($t eq 'cubic-bezier') {
-            my @c1 = @{$element->{control1}};
-            my @c2 = @{$element->{control2}};
-            my @e = @{$element->{end}};
-            $path .= sprintf ("C%f,%f %f,%f %f,%f ", @c1, @c2, @e);
-        }
-        elsif ($t eq 'closepath') {
-            $path .= "Z";
-        }
-	elsif ($t eq 'vertical-line-to') {
-	    $path .= sprintf ("V%f ", $element->{y});
-	}
-	elsif ($t eq 'horizontal-line-to') {
-	    $path .= sprintf ("H%f ", $element->{x});
-	}
-	elsif ($t eq 'line-to') {
-	    $path .= sprintf ("L%f,%f ", @{$element->{point}});
-	}
-	elsif ($t eq 'arc') {
-	    my @f = map {sprintf ("%f", $element->{$_})} @arc_fields;
-	    $path .= "A ". join (',', @f) . " ";
-	}
-	else {
-            croak "Don't know how to deal with type '$t'";
-        }
-    }
-    return $path;
+
+    return join '', map {
+        my $t = $_->{type};
+
+        my $sub = $create_path_string_type{$t} 
+            or croak "Don't know how to deal with type '$t'";
+
+        $sub->($_);
+    } @$info_ref;
 }
 
 # Match the e or E in an exponent.
