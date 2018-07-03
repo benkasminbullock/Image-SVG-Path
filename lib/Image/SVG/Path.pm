@@ -83,13 +83,11 @@ sub reverse_path
         }
         unshift @rvalues, $element;
     }
-    my $moveto = {
-        type => 'moveto',
-        point => $end_point,
-    };
-    unshift @rvalues, $moveto;
-    my $rpath = create_path_string (\@rvalues);
-    return $rpath;
+
+    return create_path_string ([
+        { type => 'moveto', point => $end_point },
+        @rvalues
+    ]);
 }
 
 sub create_path_string
