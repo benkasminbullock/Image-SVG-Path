@@ -69,7 +69,6 @@ sub reverse_path
     for my $value (@values[1..$#values]) {
         my $element = {};
         $element->{type} = $value->{type};
-#        print "$element->{type}\n";
         if ($value->{type} eq 'cubic-bezier') {
             $element->{control1} = $value->{control2};
             $element->{control2} = $value->{control1};
@@ -366,12 +365,10 @@ sub extract_path_info
     }
     for my $curve_data (@curves) {
         my ($command, $values) = @$curve_data;
-#	print "$curve\n";
         my @numbers = ($values =~ /($number)/g);
 	# Remove leading plus signs to keep the same behaviour as
 	# before.
 	@numbers = map {s/^\+//; $_} @numbers;
-#	print "@numbers\n";
         if ($verbose) {
             printf "$me: Extracted %d numbers: %s\n", scalar (@numbers),
 	    join (" ! ", @numbers);
@@ -655,9 +652,6 @@ sub extract_path_info
                 @abs_pos = @{$element->{end}};
             }
 	    elsif ($element->{type} eq 'arc') {
-
-		# Untested.
-#		print "before: @abs_pos\n";
 
                 if ($element->{position} eq 'relative') {
 		    $element->{x} += $abs_pos[0];
