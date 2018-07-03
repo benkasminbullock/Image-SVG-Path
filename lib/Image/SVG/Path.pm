@@ -40,15 +40,10 @@ my @arc_fields = qw/rx ry x_axis_rotation large_arc_flag sweep_flag x y/;
 sub position_type
 {
     my ($curve_type) = @_;
-    if (lc $curve_type eq $curve_type) {
-        return "relative";
-    }
-    elsif (uc $curve_type eq $curve_type) {
-        return "absolute";
-    }
-    else {
-        croak "I don't know what to do with '$curve_type'";
-    }
+
+    return lc $curve_type eq $curve_type ? 'relative'
+         : uc $curve_type eq $curve_type ? 'absolute'
+         : croak "I don't know what to do with '$curve_type'";
 }
 
 sub add_coords
