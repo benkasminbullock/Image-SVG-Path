@@ -325,27 +325,25 @@ sub extract_path_info
     my ($path, $options_ref) = @_;
     # Error/message reporting thing. Not sure why I did this now.
     my $me = 'extract_path_info';
-    if (! $path) {
-        croak "$me: no input";
-    }
+
+    croak "$me: no input" unless $path;
+
     # Create an empty options so that we don't have to
     # keep testing whether the "options" string is defined or not
     # before trying to read a hash value from it.
-    if ($options_ref) {
-        if (ref $options_ref ne 'HASH') {
-            croak "$me: second argument should be a hash reference";
-        }
-    }
-    else {
-        $options_ref = {};
-    }
-    if (! wantarray) {
-        croak "$me: extract_path_info returns an array of values";
-    }
+    $options_ref ||= {};
+
+    croak "$me: second argument should be a hash reference"
+        if ref $options_ref ne 'HASH';
+
+    croak "$me: extract_path_info returns an array of values"
+        unless wantarray;
+
     my $verbose = $options_ref->{verbose};
-    if ($verbose) {
-        print "$me: I am trying to split up '$path'.\n";
-    }
+
+    print "$me: I am trying to split up '$path'.\n"
+        if $verbose;
+
     my @path_info;
     my @path = split /([cslqtahvzm])/i, $path;
     if ( $path[0] !~ /^$wsp*$/ || $path[1] !~ /[Mm]/ ) {
