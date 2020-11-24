@@ -39,7 +39,7 @@ is $commands[7]->{type}, 'moveto', 'Check next command after closepath';
 is_deeply $commands[7]->{point}, [30,20], 'Check point to move to' or
     diag explain $commands[7]->{point};
 
-diag explain \@commands;
+# diag explain \@commands;
 
 my $multiple_close_path2 = 'm 10,0 10,0 0,10 -10,0 z m 20,0 10,0 0,10 -10,0 z';
 @commands = extract_path_info ($multiple_close_path2, { absolute => 1, }); 
