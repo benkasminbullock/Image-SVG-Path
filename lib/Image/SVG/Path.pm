@@ -585,6 +585,7 @@ sub extract_path_info
         my $begin_drawing = 1;  ##This will get updated after
         for my $element (@path_info) {
             if ($element->{type} eq 'moveto') {
+		$begin_drawing = 1;
                 if ($element->{position} eq 'relative') {
                     my $ip = $options_ref->{initial_position};
                     if ($ip) {
