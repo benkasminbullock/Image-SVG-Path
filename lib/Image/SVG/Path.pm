@@ -722,9 +722,6 @@ sub extract_path_info
             }
 	    elsif ($element->{type} eq 'arc') {
 
-		# Untested.
-#		print "before: @abs_pos\n";
-
                 if ($element->{position} eq 'relative') {
 		    $element->{x} += $abs_pos[0];
 		    $element->{y} += $abs_pos[1];
@@ -737,10 +734,8 @@ sub extract_path_info
 		    @start_drawing = @abs_pos;
                 }
                 @abs_pos = ($element->{x}, $element->{y});
-		#		print "after: @abs_pos\n";
 	    }
             elsif ($element->{type} eq 'closepath') {
-                # Bookkeeping
                 if ($verbose) {
 		    printf "Closing drawing shape to [%.4f, %.4f]\n", @start_drawing;
                 }
