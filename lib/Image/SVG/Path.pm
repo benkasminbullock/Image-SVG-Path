@@ -23,7 +23,7 @@ our @FUNCTIONS = qw/extract_path_info reverse_path create_path_string/;
 our @EXPORT_OK = (@FUNCTIONS, @SVG_REGEX);
 our %EXPORT_TAGS = (all => \@FUNCTIONS, regex => \@SVG_REGEX);
 
-our $VERSION = '0.35';
+our $VERSION = '0.36';
 
 use Carp;
 
