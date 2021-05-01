@@ -1,5 +1,9 @@
 Revision history for perl module Image::SVG::Path
 
+0.36 2021-04-27
+
+* Tests for arc flag parsing
+
 0.35 2021-04-26
 
 * Improved parsing of flags in arc elements

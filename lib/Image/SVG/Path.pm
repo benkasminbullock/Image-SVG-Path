@@ -448,7 +448,7 @@ sub extract_path_info
                 };
             }
         }
-        elsif ($ucc eq'L') {
+        elsif ($ucc eq 'L') {
             my $expect_numbers = 2;
 	    # Maintain this check here, even though it's duplicated
 	    # inside build_lineto, because it's specific to the lineto
@@ -459,7 +459,7 @@ sub extract_path_info
             my $position = position_type ($command);
 	    push @path_info, build_lineto ($position, @numbers);
         }
-        elsif ($ucc eq'Z') {
+        elsif ($ucc eq 'Z') {
             if (@numbers > 0) {
                 croak "Wrong number of values for a Z command " .
                     scalar @numbers . " in '$path'";
@@ -472,7 +472,7 @@ sub extract_path_info
 		svg_key => $command,
             }
         }
-        elsif ($ucc eq'Q') {
+        elsif ($ucc eq 'Q') {
             my $expect_numbers = 4;
             if (@numbers % $expect_numbers != 0) {
                 croak "Wrong number of values for a Q command " .
@@ -491,7 +491,7 @@ sub extract_path_info
                 }
             }
         }
-        elsif ($ucc eq'T') {
+        elsif ($ucc eq 'T') {
             my $expect_numbers = 2;
             if (@numbers % $expect_numbers != 0) {
                 croak "$me: Wrong number of values for an T command " .
@@ -509,7 +509,7 @@ sub extract_path_info
                 }
             }
         }
-        elsif ($ucc eq'H') {
+        elsif ($ucc eq 'H') {
             my $position = position_type ($command);
             for (my $i = 0; $i < @numbers; $i++) {
                 push @path_info, {
@@ -521,7 +521,7 @@ sub extract_path_info
                 };
             }
         }
-        elsif ($ucc eq'V') {
+        elsif ($ucc eq 'V') {
             my $position = position_type ($command);
             for (my $i = 0; $i < @numbers; $i++) {
                 push @path_info, {
@@ -533,7 +533,7 @@ sub extract_path_info
                 };
             }
         }
-        elsif ($ucc eq'A') {
+        elsif ($ucc eq 'A') {
             my $position = position_type ($command);
             my $expect_numbers = 7;
 	    if (@numbers % $expect_numbers != 0) {
@@ -551,7 +551,7 @@ sub extract_path_info
                 push @path_info, \%arc;
             }
         }
-	elsif ($ucc eq'M') {
+	elsif ($ucc eq 'M') {
             my $expect_numbers = 2;
 	    my $position = position_type ($command);
 	    if (@numbers < $expect_numbers) {
@@ -565,7 +565,7 @@ sub extract_path_info
 		type => 'moveto',
 		name => 'moveto',
 		position => $position,
-		point => [@numbers[0,1]],
+		point => [@numbers[0, 1]],
 		svg_key => $command,
 	    };
 	    # M can be followed by implicit line-to commands, so
@@ -610,6 +610,15 @@ sub extract_path_info
                     }
                 }
                 @abs_pos = @{$element->{point}};
+		# It's possible to have a z, followed by an m,
+		# followed by a z.  This occurred with
+		# https://github.com/edent/SuperTinyIcons/blob/master/images/svg/mailchimp.svg
+		# as of commit
+		# https://github.com/edent/SuperTinyIcons/commit/fd79fb48365ee14ace58e8aed5bad046e5b8136c
+		# So we should always have a valid value in
+		# @start_drawing, in case someone makes a useless
+		# "move".
+		@start_drawing = @abs_pos;
             }
             elsif ($element->{type} eq 'line-to') {
                 if ($element->{position} eq 'relative') {
